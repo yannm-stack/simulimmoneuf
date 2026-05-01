@@ -20,10 +20,10 @@ const app = express();
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "ssl0.ovh.net",
   port: parseInt(process.env.SMTP_PORT || "465"),
-  secure: process.env.SMTP_PORT === "465", // true for 465, false for 587
+  secure: (process.env.SMTP_PORT || "465") === "465", 
   auth: {
     user: process.env.SMTP_USER || "contact@simulimmoneuf.fr",
-    pass: process.env.SMTP_PASSWORD,
+    pass: process.env.SMTP_PASSWORD || "",
   },
 });
 
@@ -364,19 +364,25 @@ app.post("/api/request-meeting", apiLimiter, express.json(), async (req, res) =>
 // API Route: Fetch Blog/News from MoneyVox RSS
 app.get("/api/news", async (req, res) => {
   try {
-    console.log("Fetching MoneyVox RSS feed...");
+    console.log("Attempting to fetch MoneyVox RSS feed...");
     const response = await axios.get("https://www.moneyvox.fr/actu/rss.php", {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8',
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache'
       },
-      timeout: 10000 // Increased timeout
+      timeout: 10000 
     });
+
+    if (!response.data || typeof response.data !== 'string') {
+      throw new Error(`Invalid response data type: ${typeof response.data}`);
+    }
 
     const feed = await rssParser.parseString(response.data);
     
     if (!feed || !feed.items || feed.items.length === 0) {
-      throw new Error("Empty feed received");
+      throw new Error("Empty feed or items after parsing");
     }
 
     const formattedNews = feed.items.slice(0, 9).map((item: any) => {
@@ -385,23 +391,39 @@ app.get("/api/news", async (req, res) => {
         const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/);
         if (imgMatch) imageUrl = imgMatch[1];
       }
+      
+      // Some MoneyVox items might have images in distinct fields
+      if (!imageUrl && item['media:content']) {
+          imageUrl = item['media:content']?.$?.url;
+      }
 
       return {
-        title: item.title,
-        link: item.link,
-        pubDate: item.pubDate,
-        content: (item.contentSnippet || item.content || "").replace(/<[^>]*>/g, "").slice(0, 150) + "...",
-        creator: item.creator,
-        categories: item.categories,
+        title: item.title || "Titre non disponible",
+        link: item.link || "#",
+        pubDate: item.pubDate || new Date().toISOString(),
+        content: (item.contentSnippet || item.content || "").replace(/<[^>]*>/g, "").slice(0, 160) + "...",
+        creator: item.creator || "MoneyVox",
+        categories: item.categories || [],
         image: imageUrl
       };
     });
 
+    console.log(`Successfully fetched ${formattedNews.length} articles.`);
     res.json(formattedNews);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error("RSS Fetch Failed -> Triggering Fallback. Error:", errorMsg);
+    console.error("RSS Fetch Encountered an issue:", errorMsg);
     
+    // Check if it's a specific axios error
+    if (axios.isAxiosError(error)) {
+        console.error("Axios Error Detail:", {
+            status: error.response?.status,
+            code: error.code,
+            url: error.config?.url
+        });
+    }
+    
+    console.log("Serving fallback news data to user...");
     res.json([
       {
         title: "Taux immobilier : la baisse se confirme en 2024",

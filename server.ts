@@ -180,282 +180,273 @@ const generateTableHtml = (title: string, data: any, intro: string) => {
   </div>
 `;};
 
-async function startServer() {
-  const PORT = 3000;
+// Global Security Headers
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
 
-  // Global Security Headers
-  app.use(helmet({
-    contentSecurityPolicy: false, // Disable CSP in dev or configure properly
-    crossOriginEmbedderPolicy: false
-  }));
+// General Rate Limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(generalLimiter);
 
-  // General Rate Limiting
-  const generalLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
-  app.use(generalLimiter);
+// Stricter Rate Limiting for API routes that send emails
+const apiLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  message: "Too many requests from this IP, please try again after an hour",
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
-  // Stricter Rate Limiting for API routes that send emails
-  const apiLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10, // limit each IP to 10 requests per hour
-    message: "Too many requests from this IP, please try again after an hour",
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok", env: process.env.NODE_ENV, vercel: !!process.env.VERCEL });
+});
 
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", env: process.env.NODE_ENV, vercel: !!process.env.VERCEL });
-  });
-
-  // API Route: Fetch Rates from MoneyVox
-  app.get("/api/rates", async (req, res) => {
-    try {
-      const { data } = await axios.get("https://www.moneyvox.fr/credit/barometre-taux.php", {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        },
-        timeout: 8000
+// API Route: Fetch Rates from MoneyVox
+app.get("/api/rates", async (req, res) => {
+  try {
+    const { data } = await axios.get("https://www.moneyvox.fr/credit/barometre-taux.php", {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      timeout: 8000
+    });
+    const $ = cheerio.load(data);
+    
+    const ratesMap: Map<number, { avgRate?: number, midRate?: number, topRate?: number }> = new Map();
+    
+    $("table").each((_, table) => {
+      const headers: string[] = [];
+      $(table).find("tr").first().find("th, td").each((__, cell) => {
+        headers.push($(cell).text().trim().toLowerCase());
       });
-      const $ = cheerio.load(data);
-      
-      const ratesMap: Map<number, { avgRate?: number, midRate?: number, topRate?: number }> = new Map();
-      
-      // Look for the specific table structure from the image
-      // Head: | | 7 ans | 10 ans | 15 ans | 20 ans | 25 ans |
-      // Row "Bon taux": | 3.20% | ...
-      // Row "Très bon taux": | 2.98% | ...
-      // Row "Excellent taux": | 2.70% | ...
-      
-      $("table").each((_, table) => {
-        const headers: string[] = [];
-        $(table).find("tr").first().find("th, td").each((__, cell) => {
-          headers.push($(cell).text().trim().toLowerCase());
-        });
 
-        // Check if this table has header with durations
-        const hasDurations = headers.some(h => h.includes("ans"));
-        if (!hasDurations) return;
+      const hasDurations = headers.some(h => h.includes("ans"));
+      if (!hasDurations) return;
 
-        $(table).find("tr").each((rowIdx, row) => {
-          if (rowIdx === 0) return; // Skip header
+      $(table).find("tr").each((rowIdx, row) => {
+        if (rowIdx === 0) return;
 
-          const cells = $(row).find("td, th");
-          const rowLabel = $(cells[0]).text().trim().toLowerCase();
-          
-          const cleanRate = (s: string) => {
-            const cleaned = s.replace(",", ".").replace(/[^0-9.]/g, "");
-            return cleaned ? parseFloat(cleaned) : NaN;
-          };
+        const cells = $(row).find("td, th");
+        const rowLabel = $(cells[0]).text().trim().toLowerCase();
+        
+        const cleanRate = (s: string) => {
+          const cleaned = s.replace(",", ".").replace(/[^0-9.]/g, "");
+          return cleaned ? parseFloat(cleaned) : NaN;
+        };
 
-          const isBonRow = rowLabel === "bon taux";
-          const isTresBonRow = rowLabel.includes("très bon");
-          const isTopRow = rowLabel.includes("excellent");
+        const isBonRow = rowLabel === "bon taux";
+        const isTresBonRow = rowLabel.includes("très bon");
+        const isTopRow = rowLabel.includes("excellent");
 
-          if (isBonRow || isTresBonRow || isTopRow) {
-            cells.each((cellIdx, cell) => {
-              if (cellIdx === 0) return; // Skip label cell
+        if (isBonRow || isTresBonRow || isTopRow) {
+          cells.each((cellIdx, cell) => {
+            if (cellIdx === 0) return;
+            
+            const headerText = headers[cellIdx];
+            if (headerText && headerText.includes("ans")) {
+              const years = parseInt(headerText);
+              const rateValue = cleanRate($(cell).text().trim());
               
-              const headerText = headers[cellIdx];
-              if (headerText && headerText.includes("ans")) {
-                const years = parseInt(headerText);
-                const rateValue = cleanRate($(cell).text().trim());
-                
-                if (!isNaN(years) && !isNaN(rateValue)) {
-                  const existing = ratesMap.get(years) || {};
-                  if (isBonRow) existing.avgRate = rateValue;
-                  if (isTresBonRow) existing.midRate = rateValue;
-                  if (isTopRow) existing.topRate = rateValue;
-                  ratesMap.set(years, existing);
-                }
+              if (!isNaN(years) && !isNaN(rateValue)) {
+                const existing = ratesMap.get(years) || {};
+                if (isBonRow) existing.avgRate = rateValue;
+                if (isTresBonRow) existing.midRate = rateValue;
+                if (isTopRow) existing.topRate = rateValue;
+                ratesMap.set(years, existing);
               }
-            });
-          }
-        });
+            }
+          });
+        }
       });
+    });
 
-      const ratesList = Array.from(ratesMap.entries())
-        .map(([years, vals]) => ({
-          years,
-          avgRate: vals.avgRate || 0,
-          midRate: vals.midRate || vals.avgRate || 0,
-          topRate: vals.topRate || vals.midRate || vals.avgRate || 0
-        }))
-        .filter(r => r.avgRate > 0);
+    const ratesList = Array.from(ratesMap.entries())
+      .map(([years, vals]) => ({
+        years,
+        avgRate: vals.avgRate || 0,
+        midRate: vals.midRate || vals.avgRate || 0,
+        topRate: vals.topRate || vals.midRate || vals.avgRate || 0
+      }))
+      .filter(r => r.avgRate > 0);
 
-      // Final fallback if scraping fails or returns invalid data
-      if (ratesList.length < 2) {
-        return res.json([
-          { years: 7, avgRate: 3.20, midRate: 2.98, topRate: 2.70 },
-          { years: 10, avgRate: 3.30, midRate: 3.05, topRate: 2.70 },
-          { years: 15, avgRate: 3.47, midRate: 3.22, topRate: 2.90 },
-          { years: 20, avgRate: 3.56, midRate: 3.34, topRate: 3.05 },
-          { years: 25, avgRate: 3.65, midRate: 3.42, topRate: 3.15 },
-        ].sort((a, b) => a.years - b.years));
-      }
-
-      res.json(ratesList.sort((a, b) => a.years - b.years));
-    } catch (error) {
-      console.error("Error fetching rates:", error);
-      res.json([
+    if (ratesList.length < 2) {
+      return res.json([
         { years: 7, avgRate: 3.20, midRate: 2.98, topRate: 2.70 },
         { years: 10, avgRate: 3.30, midRate: 3.05, topRate: 2.70 },
         { years: 15, avgRate: 3.47, midRate: 3.22, topRate: 2.90 },
         { years: 20, avgRate: 3.56, midRate: 3.34, topRate: 3.05 },
         { years: 25, avgRate: 3.65, midRate: 3.42, topRate: 3.15 },
-      ]);
+      ].sort((a, b) => a.years - b.years));
     }
-  });
 
-  // API Route: Handle Document Requests
-  app.post("/api/request-docs", apiLimiter, express.json(), async (req, res) => {
-    try {
-      const data = req.body;
-      console.log("Document request received for:", data.clientName || `${data.firstName} ${data.lastName}`);
-      
-      if (!process.env.SMTP_PASSWORD) {
-        console.warn("SMTP_PASSWORD not set. Email not sent.");
-        return res.json({ success: true, message: "Logged (SMTP not configured)" });
+    res.json(ratesList.sort((a, b) => a.years - b.years));
+  } catch (error) {
+    console.error("Error fetching rates:", error);
+    res.json([
+      { years: 7, avgRate: 3.20, midRate: 2.98, topRate: 2.70 },
+      { years: 10, avgRate: 3.30, midRate: 3.05, topRate: 2.70 },
+      { years: 15, avgRate: 3.47, midRate: 3.22, topRate: 2.90 },
+      { years: 20, avgRate: 3.56, midRate: 3.34, topRate: 3.05 },
+      { years: 25, avgRate: 3.65, midRate: 3.42, topRate: 3.15 },
+    ]);
+  }
+});
+
+// API Route: Handle Document Requests
+app.post("/api/request-docs", apiLimiter, express.json(), async (req, res) => {
+  try {
+    const data = req.body;
+    console.log("Document request received for:", data.clientName || `${data.firstName} ${data.lastName}`);
+    
+    if (!process.env.SMTP_PASSWORD) {
+      console.warn("SMTP_PASSWORD not set. Email not sent.");
+      return res.json({ success: true, message: "Logged (SMTP not configured)" });
+    }
+
+    const mailOptions = {
+      from: `"SimulImmoNeuf" <${process.env.SMTP_USER}>`,
+      to: process.env.CONTACT_EMAIL || "contact@simulimmoneuf.fr",
+      subject: `Dossier Immoneuf : ${data.firstName || data.clientName} ${data.lastName || ''}`,
+      text: `Nouveau dossier de simulation reçu.`,
+      html: generateTableHtml(
+        "Dossier de Simulation", 
+        data, 
+        "Un client vient de terminer une simulation complète sur votre site."
+      ),
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true, message: "Email sent successfully" });
+  } catch (error) {
+    console.error("Error sending email:", error);
+    res.status(500).json({ error: "Failed to send email" });
+  }
+});
+
+// API Route: Handle Meeting Requests
+app.post("/api/request-meeting", apiLimiter, express.json(), async (req, res) => {
+  try {
+    const data = req.body;
+    console.log("Meeting request received from:", data.email);
+
+    if (!process.env.SMTP_PASSWORD) {
+      console.warn("SMTP_PASSWORD not set. Email not sent.");
+      return res.json({ success: true, message: "Logged (SMTP not configured)" });
+    }
+
+    const mailOptions = {
+      from: `"SimulImmoNeuf" <${process.env.SMTP_USER}>`,
+      to: process.env.CONTACT_EMAIL || "contact@simulimmoneuf.fr",
+      subject: `DEMANDE D'ÉTUDE : ${data.firstName} ${data.lastName}`,
+      text: `Demande de rappel / étude de projet reçue.`,
+      html: generateTableHtml(
+        "Demande d'Étude de Projet", 
+        data, 
+        "Ce client souhaite être recontacté après avoir consulté ses résultats détaillés."
+      ),
+    };
+
+    await transporter.sendMail(mailOptions);
+    res.json({ success: true, message: "Email sent successfully" });
+  } catch (error) {
+    console.error("Error sending meeting request email:", error);
+    res.status(500).json({ error: "Failed to send email" });
+  }
+});
+
+// API Route: Fetch Blog/News from MoneyVox RSS
+app.get("/api/news", async (req, res) => {
+  try {
+    console.log("Fetching MoneyVox RSS feed...");
+    const response = await axios.get("https://www.moneyvox.fr/actu/rss.php", {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8'
+      },
+      timeout: 10000 // Increased timeout
+    });
+
+    const feed = await rssParser.parseString(response.data);
+    
+    if (!feed || !feed.items || feed.items.length === 0) {
+      throw new Error("Empty feed received");
+    }
+
+    const formattedNews = feed.items.slice(0, 9).map((item: any) => {
+      let imageUrl = item.enclosure?.url;
+      if (!imageUrl && item.content) {
+        const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/);
+        if (imgMatch) imageUrl = imgMatch[1];
       }
 
-      const mailOptions = {
-        from: `"SimulImmoNeuf" <${process.env.SMTP_USER}>`,
-        to: process.env.CONTACT_EMAIL || "contact@simulimmoneuf.fr",
-        subject: `Dossier Immoneuf : ${data.firstName || data.clientName} ${data.lastName || ''}`,
-        text: `Nouveau dossier de simulation reçu.`,
-        html: generateTableHtml(
-          "Dossier de Simulation", 
-          data, 
-          "Un client vient de terminer une simulation complète sur votre site."
-        ),
+      return {
+        title: item.title,
+        link: item.link,
+        pubDate: item.pubDate,
+        content: (item.contentSnippet || item.content || "").replace(/<[^>]*>/g, "").slice(0, 150) + "...",
+        creator: item.creator,
+        categories: item.categories,
+        image: imageUrl
       };
+    });
 
-      await transporter.sendMail(mailOptions);
-      res.json({ success: true, message: "Email sent successfully" });
-    } catch (error) {
-      console.error("Error sending email:", error);
-      res.status(500).json({ error: "Failed to send email" });
-    }
-  });
-
-  // API Route: Handle Meeting Requests
-  app.post("/api/request-meeting", apiLimiter, express.json(), async (req, res) => {
-    try {
-      const data = req.body;
-      console.log("Meeting request received from:", data.email);
-
-      if (!process.env.SMTP_PASSWORD) {
-        console.warn("SMTP_PASSWORD not set. Email not sent.");
-        return res.json({ success: true, message: "Logged (SMTP not configured)" });
+    res.json(formattedNews);
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("RSS Fetch Failed -> Triggering Fallback. Error:", errorMsg);
+    
+    res.json([
+      {
+        title: "Taux immobilier : la baisse se confirme en 2024",
+        link: "https://www.moneyvox.fr/credit/actualites",
+        pubDate: new Date().toISOString(),
+        content: "Les taux de crédit immobilier continuent leur décrue lente mais régulière, offrant de nouvelles opportunités pour les acheteurs.",
+        image: "https://picsum.photos/seed/immo1/600/400"
+      },
+      {
+        title: "Investir dans le neuf : les avantages fiscaux maintenus",
+        link: "https://www.moneyvox.fr/placement/actualites",
+        pubDate: new Date().toISOString(),
+        content: "Le gouvernement confirme le maintien de certains dispositifs d'aide à l'investissement locatif dans les zones tendues.",
+        image: "https://picsum.photos/seed/immo2/600/400"
+      },
+      {
+        title: "Passoire thermique : ce qui change pour les propriétaires",
+        link: "https://www.moneyvox.fr/immobilier/actualites",
+        pubDate: new Date().toISOString(),
+        content: "Nouvelle réglementation sur les diagnostics de performance énergétique (DPE) et calendrier des interdictions de louer.",
+        image: "https://picsum.photos/seed/immo3/600/400"
       }
+    ]);
+  }
+});
 
-      const mailOptions = {
-        from: `"SimulImmoNeuf" <${process.env.SMTP_USER}>`,
-        to: process.env.CONTACT_EMAIL || "contact@simulimmoneuf.fr",
-        subject: `DEMANDE D'ÉTUDE : ${data.firstName} ${data.lastName}`,
-        text: `Demande de rappel / étude de projet reçue.`,
-        html: generateTableHtml(
-          "Demande d'Étude de Projet", 
-          data, 
-          "Ce client souhaite être recontacté après avoir consulté ses résultats détaillés."
-        ),
-      };
-
-      await transporter.sendMail(mailOptions);
-      res.json({ success: true, message: "Email sent successfully" });
-    } catch (error) {
-      console.error("Error sending meeting request email:", error);
-      res.status(500).json({ error: "Failed to send email" });
-    }
-  });
-
-  // API Route: Fetch Blog/News from MoneyVox RSS
-  app.get("/api/news", async (req, res) => {
-    try {
-      console.log("Fetching MoneyVox RSS feed...");
-      const response = await axios.get("https://www.moneyvox.fr/actu/rss.php", {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-          'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8'
-        },
-        timeout: 8000 // 8 second timeout
-      });
-
-      const feed = await rssParser.parseString(response.data);
-      
-      if (!feed || !feed.items || feed.items.length === 0) {
-        throw new Error("Empty feed received");
-      }
-
-      const formattedNews = feed.items.slice(0, 9).map((item: any) => {
-        // Try to find an image in enclosure or content
-        let imageUrl = item.enclosure?.url;
-        if (!imageUrl && item.content) {
-          const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/);
-          if (imgMatch) imageUrl = imgMatch[1];
-        }
-
-        return {
-          title: item.title,
-          link: item.link,
-          pubDate: item.pubDate,
-          content: (item.contentSnippet || item.content || "").replace(/<[^>]*>/g, "").slice(0, 150) + "...",
-          creator: item.creator,
-          categories: item.categories,
-          image: imageUrl
-        };
-      });
-
-      res.json(formattedNews);
-    } catch (error) {
-      console.error("RSS Fetch Failed -> Triggering Fallback. Error:", error instanceof Error ? error.message : error);
-      
-      // Fallback data so the site is never empty
-      const fallbackNews = [
-        {
-          title: "Taux immobilier : la baisse se confirme en 2024",
-          link: "https://www.moneyvox.fr/credit/actualites",
-          pubDate: new Date().toISOString(),
-          content: "Les taux de crédit immobilier continuent leur décrue lente mais régulière, offrant de nouvelles opportunités pour les acheteurs.",
-          image: "https://picsum.photos/seed/immo1/600/400"
-        },
-        {
-          title: "Investir dans le neuf : les avantages fiscaux maintenus",
-          link: "https://www.moneyvox.fr/placement/actualites",
-          pubDate: new Date().toISOString(),
-          content: "Le gouvernement confirme le maintien de certains dispositifs d'aide à l'investissement locatif dans les zones tendues.",
-          image: "https://picsum.photos/seed/immo2/600/400"
-        },
-        {
-          title: "Passoire thermique : ce qui change pour les propriétaires",
-          link: "https://www.moneyvox.fr/immobilier/actualites",
-          pubDate: new Date().toISOString(),
-          content: "Nouvelle réglementation sur les diagnostics de performance énergétique (DPE) et calendrier des interdictions de louer.",
-          image: "https://picsum.photos/seed/immo3/600/400"
-        }
-      ];
-      
-      res.json(fallbackNews);
-    }
-  });
+async function startServer() {
+  const PORT = 3000;
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
+    try {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } catch (e) {
+      console.warn("Vite not found or failed to start, skipping middleware.");
+    }
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    // Only serve static files if the directory exists
     app.use(express.static(distPath));
     
-    // For any request that doesn't match an API route or static file, serve index.html
     app.get(["/","/simulation*", "/blog*", "/contact*", "/legal*"], (req, res) => {
       res.sendFile(path.join(distPath, "index.html"), (err) => {
         if (err) {

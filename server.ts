@@ -8,7 +8,14 @@ import nodemailer from "nodemailer";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 
-const rssParser = new Parser();
+const rssParser = new Parser({
+  headers: {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8'
+  },
+});
+
+const app = express();
 
 // Configure Nodemailer for OVH
 const transporter = nodemailer.createTransport({
@@ -175,7 +182,6 @@ const generateTableHtml = (title: string, data: any, intro: string) => {
 `;};
 
 async function startServer() {
-  const app = express();
   const PORT = 3000;
 
   // Global Security Headers
@@ -412,6 +418,10 @@ async function startServer() {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+
+  return app;
 }
 
 startServer();
+
+export default app;

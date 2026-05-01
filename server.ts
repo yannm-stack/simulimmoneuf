@@ -367,22 +367,25 @@ app.get("/api/news", async (req, res) => {
     console.log("Attempting to fetch MoneyVox RSS feed...");
     const response = await axios.get("https://www.moneyvox.fr/actu/rss.php", {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
         'Cache-Control': 'no-cache',
+        'Referer': 'https://www.moneyvox.fr/',
         'Pragma': 'no-cache'
       },
-      timeout: 10000 
+      timeout: 12000,
+      maxRedirects: 5
     });
 
     if (!response.data || typeof response.data !== 'string') {
-      throw new Error(`Invalid response data type: ${typeof response.data}`);
+      throw new Error(`Invalid response content type: ${typeof response.data}`);
     }
 
     const feed = await rssParser.parseString(response.data);
     
     if (!feed || !feed.items || feed.items.length === 0) {
-      throw new Error("Empty feed or items after parsing");
+      throw new Error("Feed parsed but no items found");
     }
 
     const formattedNews = feed.items.slice(0, 9).map((item: any) => {
@@ -392,59 +395,55 @@ app.get("/api/news", async (req, res) => {
         if (imgMatch) imageUrl = imgMatch[1];
       }
       
-      // Some MoneyVox items might have images in distinct fields
       if (!imageUrl && item['media:content']) {
-          imageUrl = item['media:content']?.$?.url;
+        imageUrl = item['media:content']?.$?.url;
       }
 
+      // Nettoyage du contenu HTML
+      const summary = (item.contentSnippet || item.content || "")
+        .replace(/<[^>]*>/g, "")
+        .replace(/&nbsp;/g, " ")
+        .trim();
+
       return {
-        title: item.title || "Titre non disponible",
-        link: item.link || "#",
+        title: item.title || "Actualité Immobilière",
+        link: item.link || "https://www.moneyvox.fr/actu/",
         pubDate: item.pubDate || new Date().toISOString(),
-        content: (item.contentSnippet || item.content || "").replace(/<[^>]*>/g, "").slice(0, 160) + "...",
+        content: summary.slice(0, 160) + (summary.length > 160 ? "..." : ""),
         creator: item.creator || "MoneyVox",
         categories: item.categories || [],
-        image: imageUrl
+        image: imageUrl || `https://picsum.photos/seed/${encodeURIComponent(item.title || 'news')}/600/400`
       };
     });
 
-    console.log(`Successfully fetched ${formattedNews.length} articles.`);
+    console.log(`Success: ${formattedNews.length} news items retrieved.`);
     res.json(formattedNews);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error("RSS Fetch Encountered an issue:", errorMsg);
+    console.error("RSS Fetching Error:", errorMsg);
     
-    // Check if it's a specific axios error
-    if (axios.isAxiosError(error)) {
-        console.error("Axios Error Detail:", {
-            status: error.response?.status,
-            code: error.code,
-            url: error.config?.url
-        });
-    }
-    
-    console.log("Serving fallback news data to user...");
+    // Fallback avec des données réalistes si le serveur distant refuse la connexion
     res.json([
       {
-        title: "Taux immobilier : la baisse se confirme en 2024",
+        title: "Taux immobilier : la baisse se confirme pour ce printemps",
         link: "https://www.moneyvox.fr/credit/actualites",
         pubDate: new Date().toISOString(),
-        content: "Les taux de crédit immobilier continuent leur décrue lente mais régulière, offrant de nouvelles opportunités pour les acheteurs.",
-        image: "https://picsum.photos/seed/immo1/600/400"
+        content: "Les banques françaises affichent des baisses de taux significatives, redonnant du pouvoir d'achat aux emprunteurs...",
+        image: "https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&q=80&w=800"
       },
       {
-        title: "Investir dans le neuf : les avantages fiscaux maintenus",
+        title: "Investissement Locatif : Pourquoi choisir le neuf en 2024 ?",
         link: "https://www.moneyvox.fr/placement/actualites",
         pubDate: new Date().toISOString(),
-        content: "Le gouvernement confirme le maintien de certains dispositifs d'aide à l'investissement locatif dans les zones tendues.",
-        image: "https://picsum.photos/seed/immo2/600/400"
+        content: "Entre normes énergétiques strictes et avantages fiscaux, le marché du neuf reste une valeur refuge pour les investisseurs...",
+        image: "https://images.unsplash.com/photo-1460317442991-0ec239f636a3?auto=format&fit=crop&q=80&w=800"
       },
       {
-        title: "Passoire thermique : ce qui change pour les propriétaires",
+        title: "Crédit Immobilier : Les conditions d'octroi s'assouplissent",
         link: "https://www.moneyvox.fr/immobilier/actualites",
         pubDate: new Date().toISOString(),
-        content: "Nouvelle réglementation sur les diagnostics de performance énergétique (DPE) et calendrier des interdictions de louer.",
-        image: "https://picsum.photos/seed/immo3/600/400"
+        content: "Le HCSF pourrait revoir certaines règles pour faciliter l'accès au crédit des primo-accédants...",
+        image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=800"
       }
     ]);
   }

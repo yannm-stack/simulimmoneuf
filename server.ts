@@ -364,31 +364,28 @@ app.post("/api/request-meeting", apiLimiter, express.json(), async (req, res) =>
 // API Route: Fetch Blog/News from MoneyVox RSS
 app.get("/api/news", async (req, res) => {
   try {
-    console.log("Attempting to fetch MoneyVox RSS feed...");
-    const response = await axios.get("https://www.moneyvox.fr/actu/rss.php", {
+    console.log("Fetching MoneyVox news...");
+    const url = "https://www.moneyvox.fr/actu/rss.php";
+    
+    const response = await axios.get(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-        'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cache-Control': 'no-cache',
-        'Referer': 'https://www.moneyvox.fr/',
-        'Pragma': 'no-cache'
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
       },
-      timeout: 12000,
-      maxRedirects: 5
+      timeout: 10000,
+      responseType: 'text' // Force string response to avoid auto-parsing issues
     });
 
-    if (!response.data || typeof response.data !== 'string') {
-      throw new Error(`Invalid response content type: ${typeof response.data}`);
+    if (!response.data) {
+      throw new Error("Empty response from MoneyVox");
     }
 
     const feed = await rssParser.parseString(response.data);
     
     if (!feed || !feed.items || feed.items.length === 0) {
-      throw new Error("Feed parsed but no items found");
+      throw new Error("No items found in feed");
     }
 
-    const formattedNews = feed.items.slice(0, 9).map((item: any) => {
+    const formattedNews = feed.items.slice(0, 10).map((item: any) => {
       let imageUrl = item.enclosure?.url;
       if (!imageUrl && item.content) {
         const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/);
@@ -399,30 +396,58 @@ app.get("/api/news", async (req, res) => {
         imageUrl = item['media:content']?.$?.url;
       }
 
-      // Nettoyage du contenu HTML
       const summary = (item.contentSnippet || item.content || "")
         .replace(/<[^>]*>/g, "")
         .replace(/&nbsp;/g, " ")
+        .slice(0, 180)
         .trim();
 
       return {
         title: item.title || "Actualité Immobilière",
         link: item.link || "https://www.moneyvox.fr/actu/",
         pubDate: item.pubDate || new Date().toISOString(),
-        content: summary.slice(0, 160) + (summary.length > 160 ? "..." : ""),
+        content: summary + (summary.length >= 180 ? "..." : ""),
         creator: item.creator || "MoneyVox",
-        categories: item.categories || [],
-        image: imageUrl || `https://picsum.photos/seed/${encodeURIComponent(item.title || 'news')}/600/400`
+        image: imageUrl || `https://picsum.photos/seed/${encodeURIComponent(item.title || 'news')}/800/600`
       };
     });
 
-    console.log(`Success: ${formattedNews.length} news items retrieved.`);
     res.json(formattedNews);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error("RSS Fetching Error:", errorMsg);
+    console.error("MoneyVox RSS Error, trying JS fallback...", errorMsg);
     
-    // Fallback avec des données réalistes si le serveur distant refuse la connexion
+    try {
+      // Secondary dynamic fallback: Parse the JS script they provided
+      const jsUrl = "https://www.moneyvox.fr/actu/javascript.php";
+      const jsRes = await axios.get(jsUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+        timeout: 5000
+      });
+      
+      const news: any[] = [];
+      const regex = /document\.write\('<li><a href="([^"]+)"[^>]*>([^<]+)<\/a><\/li>'\);/g;
+      let match;
+      
+      while ((match = regex.exec(jsRes.data)) !== null && news.length < 10) {
+        news.push({
+          title: match[2].replace(/&#039;/g, "'").replace(/&quot;/g, '"'),
+          link: match[1],
+          pubDate: new Date().toISOString(),
+          content: "Consultez l'article complet sur MoneyVox.fr pour plus de détails sur cette actualité immobilière et économique.",
+          image: `https://picsum.photos/seed/${encodeURIComponent(match[2])}/800/600`
+        });
+      }
+      
+      if (news.length > 0) {
+        console.log(`Parsed ${news.length} items from JS fallback.`);
+        return res.json(news);
+      }
+    } catch (jsError) {
+      console.error("MoneyVox JS Fallback also failed:", jsError instanceof Error ? jsError.message : String(jsError));
+    }
+
+    // Final static fallback data
     res.json([
       {
         title: "Taux immobilier : la baisse se confirme pour ce printemps",
@@ -437,13 +462,6 @@ app.get("/api/news", async (req, res) => {
         pubDate: new Date().toISOString(),
         content: "Entre normes énergétiques strictes et avantages fiscaux, le marché du neuf reste une valeur refuge pour les investisseurs...",
         image: "https://images.unsplash.com/photo-1460317442991-0ec239f636a3?auto=format&fit=crop&q=80&w=800"
-      },
-      {
-        title: "Crédit Immobilier : Les conditions d'octroi s'assouplissent",
-        link: "https://www.moneyvox.fr/immobilier/actualites",
-        pubDate: new Date().toISOString(),
-        content: "Le HCSF pourrait revoir certaines règles pour faciliter l'accès au crédit des primo-accédants...",
-        image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=800"
       }
     ]);
   }

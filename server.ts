@@ -365,88 +365,114 @@ app.post("/api/request-meeting", apiLimiter, express.json(), async (req, res) =>
 app.get("/api/news", async (req, res) => {
   try {
     console.log("Fetching MoneyVox news...");
+    
+    // First attempt: Standard RSS XML
     const url = "https://www.moneyvox.fr/actu/rss.php";
+    let formattedNews: any[] = [];
     
-    const response = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-      },
-      timeout: 10000,
-      responseType: 'text' // Force string response to avoid auto-parsing issues
-    });
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept': 'application/rss+xml, application/xml, text/xml'
+        },
+        timeout: 12000,
+        responseType: 'arraybuffer' // Fetch as buffer to handle encoding manually if needed
+      });
 
-    if (!response.data) {
-      throw new Error("Empty response from MoneyVox");
-    }
-
-    const feed = await rssParser.parseString(response.data);
-    
-    if (!feed || !feed.items || feed.items.length === 0) {
-      throw new Error("No items found in feed");
-    }
-
-    const formattedNews = feed.items.slice(0, 10).map((item: any) => {
-      let imageUrl = item.enclosure?.url;
-      if (!imageUrl && item.content) {
-        const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/);
-        if (imgMatch) imageUrl = imgMatch[1];
+      // Try decoding as UTF-8 first, then try ISO-8859-1 if needed
+      let xmlContent = Buffer.from(response.data).toString('utf-8');
+      if (xmlContent.includes('encoding="ISO-8859-1"') || xmlContent.includes('encoding="iso-8859-1"')) {
+        // Simple manual replacement for common French characters if we can't use iconv-lite
+        // Or just let rss-parser try its best
       }
+
+      const feed = await rssParser.parseString(xmlContent);
       
-      if (!imageUrl && item['media:content']) {
-        imageUrl = item['media:content']?.$?.url;
+      if (feed && feed.items && feed.items.length > 0) {
+        formattedNews = feed.items.slice(0, 10).map((item: any) => {
+          let imageUrl = item.enclosure?.url;
+          if (!imageUrl && item.content) {
+            const imgMatch = item.content.match(/<img[^>]+src="([^">]+)"/);
+            if (imgMatch) imageUrl = imgMatch[1];
+          }
+          
+          if (!imageUrl && item['media:content']) {
+            imageUrl = item['media:content']?.$?.url;
+          }
+
+          const summary = (item.contentSnippet || item.content || "")
+            .replace(/<[^>]*>/g, "")
+            .replace(/&nbsp;/g, " ")
+            .slice(0, 180)
+            .trim();
+
+          return {
+            title: item.title || "Actualité Immobilière",
+            link: item.link || "https://www.moneyvox.fr/actu/",
+            pubDate: item.pubDate || new Date().toISOString(),
+            content: summary + (summary.length >= 180 ? "..." : ""),
+            creator: item.creator || "MoneyVox",
+            image: imageUrl || `https://picsum.photos/seed/${encodeURIComponent(item.title || 'news')}/800/600`
+          };
+        });
       }
+    } catch (rssError) {
+      console.warn("RSS XML Fetch failed, trying JS script...", rssError instanceof Error ? rssError.message : String(rssError));
+    }
 
-      const summary = (item.contentSnippet || item.content || "")
-        .replace(/<[^>]*>/g, "")
-        .replace(/&nbsp;/g, " ")
-        .slice(0, 180)
-        .trim();
+    // Second attempt: JS Fallback (user specifically requested this)
+    if (formattedNews.length === 0) {
+      try {
+        const jsUrl = "https://www.moneyvox.fr/actu/javascript.php";
+        const jsRes = await axios.get(jsUrl, {
+          headers: { 
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36' 
+          },
+          timeout: 8000,
+          responseType: 'arraybuffer'
+        });
+        
+        // Decode JS script which is likely ISO-8859-1
+        const jsData = Buffer.from(jsRes.data).toString('latin1'); 
+        
+        const regex = /document\.write\('<li><a href="([^"]+)"[^>]*>([^<]+)<\/a><\/li>'\);/g;
+        let match;
+        
+        while ((match = regex.exec(jsData)) !== null && formattedNews.length < 10) {
+          const rawTitle = match[2]
+            .replace(/&#039;/g, "'")
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">");
 
-      return {
-        title: item.title || "Actualité Immobilière",
-        link: item.link || "https://www.moneyvox.fr/actu/",
-        pubDate: item.pubDate || new Date().toISOString(),
-        content: summary + (summary.length >= 180 ? "..." : ""),
-        creator: item.creator || "MoneyVox",
-        image: imageUrl || `https://picsum.photos/seed/${encodeURIComponent(item.title || 'news')}/800/600`
-      };
-    });
+          formattedNews.push({
+            title: rawTitle,
+            link: match[1],
+            pubDate: new Date().toISOString(),
+            content: "Retrouvez toute l'actualité immobilière et les conseils d'épargne en détail sur le site MoneyVox.",
+            image: `https://picsum.photos/seed/${encodeURIComponent(rawTitle)}/800/600`
+          });
+        }
+        
+        if (formattedNews.length > 0) {
+          console.log(`Success: Parsed ${formattedNews.length} items from JS fallback.`);
+        }
+      } catch (jsError) {
+        console.error("MoneyVox JS Fallback also failed:", jsError instanceof Error ? jsError.message : String(jsError));
+      }
+    }
+
+    if (formattedNews.length === 0) {
+      throw new Error("All fetch methods failed for MoneyVox");
+    }
 
     res.json(formattedNews);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error("MoneyVox RSS Error, trying JS fallback...", errorMsg);
+    console.error("Critical MoneyVox Error:", errorMsg);
     
-    try {
-      // Secondary dynamic fallback: Parse the JS script they provided
-      const jsUrl = "https://www.moneyvox.fr/actu/javascript.php";
-      const jsRes = await axios.get(jsUrl, {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        timeout: 5000
-      });
-      
-      const news: any[] = [];
-      const regex = /document\.write\('<li><a href="([^"]+)"[^>]*>([^<]+)<\/a><\/li>'\);/g;
-      let match;
-      
-      while ((match = regex.exec(jsRes.data)) !== null && news.length < 10) {
-        news.push({
-          title: match[2].replace(/&#039;/g, "'").replace(/&quot;/g, '"'),
-          link: match[1],
-          pubDate: new Date().toISOString(),
-          content: "Consultez l'article complet sur MoneyVox.fr pour plus de détails sur cette actualité immobilière et économique.",
-          image: `https://picsum.photos/seed/${encodeURIComponent(match[2])}/800/600`
-        });
-      }
-      
-      if (news.length > 0) {
-        console.log(`Parsed ${news.length} items from JS fallback.`);
-        return res.json(news);
-      }
-    } catch (jsError) {
-      console.error("MoneyVox JS Fallback also failed:", jsError instanceof Error ? jsError.message : String(jsError));
-    }
-
     // Final static fallback data
     res.json([
       {

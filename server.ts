@@ -207,6 +207,10 @@ async function startServer() {
     legacyHeaders: false,
   });
 
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", env: process.env.NODE_ENV, vercel: !!process.env.VERCEL });
+  });
+
   // API Route: Fetch Rates from MoneyVox
   app.get("/api/rates", async (req, res) => {
     try {
@@ -407,7 +411,7 @@ async function startServer() {
 
       res.json(formattedNews);
     } catch (error) {
-      console.error("Error fetching news:", error instanceof Error ? error.message : error);
+      console.error("RSS Fetch Failed -> Triggering Fallback. Error:", error instanceof Error ? error.message : error);
       
       // Fallback data so the site is never empty
       const fallbackNews = [
@@ -448,9 +452,16 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    // Only serve static files if the directory exists
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+    
+    // For any request that doesn't match an API route or static file, serve index.html
+    app.get(["/","/simulation*", "/blog*", "/contact*", "/legal*"], (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"), (err) => {
+        if (err) {
+          res.status(500).send("Error serving index.html. Ensure 'npm run build' was executed.");
+        }
+      });
     });
   }
 

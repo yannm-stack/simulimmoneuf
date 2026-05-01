@@ -469,7 +469,7 @@ async function startServer() {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     
-    app.get(["/","/simulation*", "/blog*", "/contact*", "/legal*"], (req, res) => {
+    app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"), (err) => {
         if (err) {
           res.status(500).send("Error serving index.html. Ensure 'npm run build' was executed.");

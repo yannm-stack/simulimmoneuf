@@ -275,7 +275,23 @@ export default function Results() {
             </div>
 
             <div className="px-8 md:px-12 pt-10">
-              <button 
+              <motion.button 
+                initial={{ scale: 1 }}
+                animate={{ 
+                  scale: [1, 1.02, 1],
+                  boxShadow: [
+                    "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
+                    "0 25px 30px -5px rgba(0, 77, 71, 0.3), 0 12px 15px -6px rgba(0, 77, 71, 0.2)",
+                    "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)"
+                  ]
+                }}
+                transition={{ 
+                  duration: 3, 
+                  repeat: Infinity, 
+                  ease: "easeInOut" 
+                }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={() => navigate('/etude-projet', { state: { 
                   ...s, // Pass everything from initial simulation
                   curNetPrice, 
@@ -310,21 +326,23 @@ export default function Results() {
                   insuranceRate,
                   totalRevenus
                 } })}
-                className="w-full group relative overflow-hidden bg-white border-2 border-[#004d47] text-[#004d47] p-6 rounded-3xl transition-all hover:bg-[#004d47] hover:text-white shadow-xl shadow-gray-200/50 flex flex-col items-center justify-center gap-1"
+                className="w-full group relative overflow-hidden bg-[#004d47] text-white p-8 rounded-[32px] transition-all shadow-2xl flex flex-col items-center justify-center gap-2 border-none ring-4 ring-[#004d47]/10"
               >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer transition-transform pointer-events-none" />
+                
                 <div className="flex items-center gap-3 font-headline">
-                  <Sparkles className="text-primary group-hover:text-white transition-colors" size={24} />
-                  <span className="text-sm md:text-lg font-black uppercase tracking-widest leading-none">
-                    Découvrez les biens éligibles à votre budget
+                  <Sparkles className="text-white animate-pulse" size={28} />
+                  <span className="text-lg md:text-2xl font-black uppercase tracking-widest leading-tight text-center">
+                    Voir les biens éligibles - Cliquez ici
                   </span>
                 </div>
-                <span className="text-[10px] md:text-xs font-bold opacity-60 uppercase tracking-[0.1em] text-center max-w-md">
-                  Recevez une sélection de plans sous 24h après un court échange avec nos experts
+                <span className="text-xs md:text-sm font-bold opacity-80 uppercase tracking-widest text-center max-w-md">
+                  Recevez votre sélection personnalisée sous 24h
                 </span>
                 <div className="absolute top-1/2 right-8 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all">
-                  <ArrowRight size={24} />
+                  <ArrowRight size={28} />
                 </div>
-              </button>
+              </motion.button>
             </div>
 
             <div className="p-8 md:p-12 space-y-12">

@@ -1,0 +1,6 @@
+{
+	"appId": "fr.simulimmoneuf.app",
+	"appName": "Simulimmoneuf",
+	"webDir": "dist",
+	"packageClassList": []
+}

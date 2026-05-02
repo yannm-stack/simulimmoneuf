@@ -1,7 +1,8 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="100" fill="#2563eb"/>
-  <path d="M140 320V190L256 120L372 190V320" stroke="white" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M140 320H372" stroke="white" stroke-width="30" stroke-linecap="round"/>
-  <path d="M256 320V230" stroke="white" stroke-width="20" stroke-linecap="round"/>
-  <path d="M180 380H332" stroke="#60a5fa" stroke-width="15" stroke-linecap="round"/>
+  <!-- Fond du cercle : Partie noire à droite -->
+  <circle cx="256" cy="256" r="256" fill="#000000"/>
+  <!-- Partie Teal/Verte à gauche -->
+  <path d="M256 0C114.615 0 0 114.615 0 256C0 397.385 114.615 512 256 512V0Z" fill="#2A605B"/>
+  <!-- Lettre S au centre -->
+  <text x="256" y="370" fill="white" font-family="Arial, sans-serif" font-weight="900" font-size="360" text-anchor="middle">S</text>
 </svg>

@@ -1,8 +1,14 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Fond du cercle : Partie noire à droite -->
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 800; }
+    </style>
+  </defs>
+  <!-- Fond noir (partie droite) -->
   <circle cx="256" cy="256" r="256" fill="#000000"/>
-  <!-- Partie Teal/Verte à gauche -->
+  <!-- Partie Teal (partie gauche) -->
   <path d="M256 0C114.615 0 0 114.615 0 256C0 397.385 114.615 512 256 512V0Z" fill="#2A605B"/>
-  <!-- Lettre S au centre -->
-  <text x="256" y="370" fill="white" font-family="Arial, sans-serif" font-weight="900" font-size="360" text-anchor="middle">S</text>
+  <!-- Lettre S -->
+  <text x="256" y="375" fill="white" font-size="340" text-anchor="middle" class="text">S</text>
 </svg>

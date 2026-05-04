@@ -47,10 +47,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <div className="min-h-screen bg-white pb-[80px] md:pb-0">
-        <Navbar />
-        <main>
-          <ErrorBoundary>
+      <ErrorBoundary>
+        <div className="min-h-screen bg-white pb-[80px] md:pb-0">
+          <Navbar />
+          <main>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/ptz" element={<PTZ />} />
@@ -69,12 +69,12 @@ export default function App() {
               <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
             </Routes>
             <InstallPWA />
-          </ErrorBoundary>
-        </main>
-        <Footer />
-        <MobileNav />
-        <CookieConsent />
-      </div>
+          </main>
+          <Footer />
+          <MobileNav />
+          <CookieConsent />
+        </div>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

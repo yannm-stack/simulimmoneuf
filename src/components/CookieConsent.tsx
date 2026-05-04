@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Cookie, X, Check } from 'lucide-react';
+import { safeStorage } from '../lib/storage';
 
 const CookieConsent: React.FC = () => {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem('cookie-consent');
+    const consent = safeStorage.localStorage.getItem('cookie-consent');
     if (!consent) {
       const timer = setTimeout(() => setShow(true), 2000);
       return () => clearTimeout(timer);
@@ -14,12 +15,12 @@ const CookieConsent: React.FC = () => {
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem('cookie-consent', 'accepted');
+    safeStorage.localStorage.setItem('cookie-consent', 'accepted');
     setShow(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem('cookie-consent', 'declined');
+    safeStorage.localStorage.setItem('cookie-consent', 'declined');
     setShow(false);
   };
 

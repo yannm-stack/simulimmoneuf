@@ -14,7 +14,29 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="boot-loader" style="height: 100vh; display: flex; align-items: center; justify-content: center; font-family: sans-serif; background: white;">
+        <div style="text-align: center;">
+          <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #004d47; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+          <p style="color: #666; font-size: 14px; font-weight: bold;">Chargement de l'application...</p>
+        </div>
+      </div>
+    </div>
+    <script>
+      // Failsafe: if the app hasn't loaded after 8 seconds, show a reset button
+      setTimeout(function() {
+        var loader = document.getElementById('boot-loader');
+        if (loader && loader.innerHTML.indexOf('Chargement') !== -1) {
+          loader.innerHTML = '<div style="text-align: center; padding: 20px; max-width: 300px;">' +
+            '<p style="color: #004d47; font-weight: bold; margin-bottom: 20px;">Le chargement semble anormalement long.</p>' +
+            '<button onclick="localStorage.clear(); sessionStorage.clear(); location.reload(true);" style="background: #004d47; color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: bold; cursor: pointer;">Réinitialiser et réessayer</button>' +
+            '</div>';
+        }
+      }, 8000);
+    </script>
+    <style>
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

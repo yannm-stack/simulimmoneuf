@@ -1,6 +1,6 @@
-
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RotateCcw } from 'lucide-react';
+import { safeStorage } from '../lib/storage';
 
 interface Props {
   children: ReactNode;
@@ -26,12 +26,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReset = () => {
-    try {
-      sessionStorage.clear();
-      localStorage.clear();
-    } catch (e) {
-      console.warn('Could not clear storage:', e);
-    }
+    safeStorage.sessionStorage.clear();
+    safeStorage.localStorage.clear();
     window.location.href = '/';
   };
 

@@ -80,6 +80,8 @@ export default function Simulation() {
   const [isZoneVerified, setIsZoneVerified] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
 
+  const [showRfrHelp, setShowRfrHelp] = useState(false);
+  
   const MandatoryDot = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
   const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
@@ -173,7 +175,7 @@ export default function Simulation() {
 
       // Economics
       if (apport1 === undefined) { missing.push("Apport personnel"); newErrors.push("apport1"); }
-      if (rfr1 === undefined) { missing.push("Revenu Fiscal de Référence (RFR)"); newErrors.push("rfr1"); }
+      if (rfr1 === undefined) { missing.push("Revenu Fiscal de Référence (dernier avis impôt)"); newErrors.push("rfr1"); }
 
       if (newErrors.length > 0) {
         setErrors(newErrors);
@@ -1054,7 +1056,16 @@ export default function Simulation() {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-on-surface-variant flex items-center justify-between">
-                          <span>RFR (Dernier avis) <MandatoryDot /></span>
+                          <div className="flex items-center gap-2">
+                            <span>Revenu Fiscal de Référence ( dernier avis impôt ) <MandatoryDot /></span>
+                            <button 
+                              type="button"
+                              onClick={() => setShowRfrHelp(true)}
+                              className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-primary/20 transition-all border border-primary/20"
+                            >
+                              <HelpCircle size={12} /> Aide
+                            </button>
+                          </div>
                           <Info size={14} className="text-gray-400 cursor-help" title="Revenu Fiscal de Référence" />
                         </label>
                         <div className="relative">
@@ -1071,7 +1082,16 @@ export default function Simulation() {
                       {situation === "couple" && (
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-on-surface-variant flex items-center justify-between">
-                            RFR (Dernier avis) - Acq 2
+                            <div className="flex items-center gap-2">
+                              <span>Revenu Fiscal de Référence (Acq 2)</span>
+                              <button 
+                                type="button"
+                                onClick={() => setShowRfrHelp(true)}
+                                className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-primary/20 transition-all border border-primary/20"
+                              >
+                                <HelpCircle size={12} /> Aide
+                              </button>
+                            </div>
                             <Info size={14} className="text-gray-400 cursor-help" />
                           </label>
                           <div className="relative">
@@ -1606,6 +1626,66 @@ export default function Simulation() {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <AnimatePresence>
+          {showRfrHelp && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8"
+            >
+              <div 
+                className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm"
+                onClick={() => setShowRfrHelp(false)}
+              />
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden"
+              >
+                <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Où trouver mon RFR ?</h3>
+                    <p className="text-xs text-on-surface-variant font-semibold">Sur votre dernier avis d'imposition</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowRfrHelp(false)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <PlusCircle size={24} className="rotate-45 text-gray-400" />
+                  </button>
+                </div>
+                
+                <div className="p-4 bg-gray-50 flex flex-col items-center">
+                  <div className="relative w-full aspect-[4/5] max-h-[60vh] rounded-xl overflow-hidden shadow-inner border border-gray-200 bg-white">
+                    <img 
+                      src="https://img.comment-economiser.fr/donnees/2101/avis-imposition-rfr.jpg" 
+                      alt="Exemple avis d'imposition RFR" 
+                      className="w-full h-full object-contain"
+                    />
+                    {/* Placeholder for the user's specific image if they upload it to /public/rfr-help.jpg */}
+                  </div>
+                  <div className="mt-6 p-6 bg-primary/5 rounded-2xl border border-primary/10 w-full">
+                    <p className="text-sm font-bold text-primary flex items-start gap-3">
+                      <Info size={18} className="shrink-0 mt-0.5" />
+                      Le Revenu Fiscal de Référence se trouve généralement en bas de la première page de votre avis d'impôt sur le revenu, dans le cadre "Vos références".
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="p-6 bg-white flex justify-center">
+                  <button 
+                    onClick={() => setShowRfrHelp(false)}
+                    className="px-10 py-4 bg-gray-900 text-white font-black uppercase tracking-widest rounded-xl hover:brightness-110 active:scale-95 transition-all shadow-xl"
+                  >
+                    J'ai compris
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

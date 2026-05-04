@@ -20,10 +20,11 @@ import { motion } from "motion/react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { calculatePTZ, Zone } from "../lib/ptzUtils";
 import { getMaxDuration, getRateForDuration, MarketRate } from "../lib/loanUtils";
+import { loadSimulation } from "../lib/persistence";
 
 export default function Results() {
   const location = useLocation();
-  const s = location.state || {};
+  const s = location.state || loadSimulation() || {};
 
   const [marketRates, setMarketRates] = useState<MarketRate[]>([]);
 
@@ -326,17 +327,17 @@ export default function Results() {
                   insuranceRate,
                   totalRevenus
                 } })}
-                className="w-full group relative overflow-hidden bg-[#004d47] text-white p-8 rounded-[32px] transition-all shadow-2xl flex flex-col items-center justify-center gap-2 border-none ring-4 ring-[#004d47]/10"
+                className="w-full group relative overflow-hidden bg-[#004d47] text-white p-6 md:p-8 rounded-[24px] md:rounded-[32px] transition-all shadow-2xl flex flex-col items-center justify-center gap-1 md:gap-2 border-none ring-4 ring-[#004d47]/10"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-shimmer transition-transform pointer-events-none" />
                 
-                <div className="flex items-center gap-3 font-headline">
-                  <Sparkles className="text-white animate-pulse" size={28} />
-                  <span className="text-lg md:text-2xl font-black uppercase tracking-widest leading-tight text-center">
+                <div className="flex items-center gap-2 md:gap-3 font-headline">
+                  <Sparkles className="text-white animate-pulse" size={24} />
+                  <span className="text-sm md:text-2xl font-black uppercase tracking-widest leading-tight text-center">
                     Voir les biens éligibles - Cliquez ici
                   </span>
                 </div>
-                <span className="text-xs md:text-sm font-bold opacity-80 uppercase tracking-widest text-center max-w-md">
+                <span className="text-[10px] md:text-sm font-bold opacity-80 uppercase tracking-widest text-center max-w-md">
                   Recevez votre sélection personnalisée sous 24h
                 </span>
                 <div className="absolute top-1/2 right-8 -translate-y-1/2 opacity-0 group-hover:opacity-100 group-hover:translate-x-2 transition-all">

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "motion/react";
+import { loadSimulation } from "../lib/persistence";
 import { 
   ArrowLeft, 
   CheckCircle2, 
@@ -25,7 +26,7 @@ import {
 export default function MeetingRequest() {
   const location = useLocation();
   const navigate = useNavigate();
-  const s = location.state || {};
+  const s = location.state || loadSimulation() || {};
   
   const [formData, setFormData] = useState({
     firstName: "",

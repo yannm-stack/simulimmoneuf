@@ -7,11 +7,11 @@ export default function Simulator() {
   const [selection, setSelection] = useState<"primo" | "invest" | null>(null);
 
   return (
-    <section className="py-24 bg-gray-50">
-      <div className="max-w-4xl mx-auto px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-sm font-bold text-primary tracking-[0.2em] uppercase mb-4">Étape 1 : Votre Projet</h2>
-          <h3 className="text-3xl font-extrabold tracking-tight">SIMULATEUR DE PRÊT</h3>
+    <section className="py-12 md:py-24 bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 md:px-8">
+        <div className="text-center mb-8 md:mb-16">
+          <h2 className="text-[10px] md:text-sm font-bold text-primary tracking-[0.2em] uppercase mb-4">Étape 1 : Votre Projet</h2>
+          <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight">SIMULATEUR DE PRÊT</h3>
         </div>
 
         {/* Progress Tracker */}
@@ -31,26 +31,26 @@ export default function Simulator() {
         </div>
 
         {/* Card Grid */}
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
+        <div className="grid md:grid-cols-2 gap-4 md:gap-8 mb-12">
           <button 
             onClick={() => setSelection("primo")}
-            className={`group p-8 bg-white rounded-xl text-left transition-all border-2 shadow-sm hover:shadow-md ${selection === "primo" ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/50"}`}
+            className={`group p-6 md:p-8 bg-white rounded-xl text-left transition-all border-2 shadow-sm hover:shadow-md ${selection === "primo" ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/50"}`}
           >
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${selection === "primo" ? "bg-primary text-white" : "bg-primary-fixed text-primary"}`}>
-              <Users size={32} />
+            <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center mb-4 md:mb-6 transition-transform group-hover:scale-110 ${selection === "primo" ? "bg-primary text-white" : "bg-primary-fixed text-primary"}`}>
+              <Users size={24} className="md:w-[32px] md:h-[32px]" />
             </div>
-            <h4 className="text-xl font-bold mb-2">Je suis Primo-accédant</h4>
-            <p className="text-sm text-on-surface-variant">C'est ma première acquisition pour ma résidence principale.</p>
+            <h4 className="text-lg md:text-xl font-bold mb-2 text-on-surface">Je suis Primo-accédant</h4>
+            <p className="text-sm text-on-surface-variant leading-relaxed">C'est ma première acquisition pour ma résidence principale.</p>
           </button>
           <button 
             onClick={() => setSelection("invest")}
-            className={`group p-8 bg-white rounded-xl text-left transition-all border-2 shadow-sm hover:shadow-md ${selection === "invest" ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/50"}`}
+            className={`group p-6 md:p-8 bg-white rounded-xl text-left transition-all border-2 shadow-sm hover:shadow-md ${selection === "invest" ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/50"}`}
           >
-            <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${selection === "invest" ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}>
-              <Building2 size={32} />
+            <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center mb-4 md:mb-6 transition-transform group-hover:scale-110 ${selection === "invest" ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}>
+              <Building2 size={24} className="md:w-[32px] md:h-[32px]" />
             </div>
-            <h4 className="text-xl font-bold mb-2">Je suis Investisseur</h4>
-            <p className="text-sm text-on-surface-variant">Je souhaite constituer un patrimoine ou défiscaliser.</p>
+            <h4 className="text-lg md:text-xl font-bold mb-2 text-on-surface">Je suis Investisseur</h4>
+            <p className="text-sm text-on-surface-variant leading-relaxed">Je souhaite constituer un patrimoine ou défiscaliser.</p>
           </button>
         </div>
 

@@ -8,6 +8,8 @@ import { detectZone } from "../lib/cityZones";
 import { DEPARTMENTS } from "../lib/departments";
 import Autocomplete from "../components/Autocomplete";
 
+import { saveSimulation } from "../lib/persistence";
+
 export default function Simulation() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -283,6 +285,7 @@ export default function Simulation() {
       // Default or calculated values for other fields
       mode: 'neuf' as const
     };
+    saveSimulation(data);
     navigate('/results', { state: data });
   };
 

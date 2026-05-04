@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <style>
-      .text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-weight: 800; }
-    </style>
-  </defs>
-  <!-- Fond noir (partie droite) -->
-  <circle cx="256" cy="256" r="256" fill="#000000"/>
-  <!-- Partie Teal (partie gauche) -->
-  <path d="M256 0C114.615 0 0 114.615 0 256C0 397.385 114.615 512 256 512V0Z" fill="#2A605B"/>
+  <!-- Fond Primary (Teal) -->
+  <circle cx="256" cy="256" r="256" fill="#00665e"/>
+  <!-- Partie Sombre (Moitié droite) -->
+  <path d="M256 0C397.385 0 512 114.615 512 256C512 397.385 397.385 512 256 512V0Z" fill="rgba(62, 73, 71, 0.2)"/>
   <!-- Lettre S -->
-  <text x="256" y="375" fill="white" font-size="340" text-anchor="middle" class="text">S</text>
+  <text x="256" y="380" fill="white" font-family="sans-serif" font-weight="900" font-size="360" text-anchor="middle">S</text>
 </svg>

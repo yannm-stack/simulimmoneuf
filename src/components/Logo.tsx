@@ -12,6 +12,12 @@ export default function Logo({ className = "", showText = true, variant = 'defau
   
   return (
     <Link to="/" className={`flex ${horizontal ? 'items-center gap-3' : 'flex-col items-center gap-2'} group ${className}`}>
+      {/* Icon Circle */}
+      <div className={`relative w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center shrink-0 overflow-hidden ${isWhite ? "bg-white/20" : "bg-primary/95 shadow-lg shadow-primary/20"}`}>
+        <div className="absolute inset-0 bg-on-surface-variant/20 translate-x-1/2" />
+        <span className="relative text-white font-black text-2xl select-none">S</span>
+      </div>
+
       {showText && (
         <div className={`flex flex-col ${horizontal ? '' : 'items-center'}`}>
           <div className="flex items-baseline">

@@ -24,6 +24,9 @@ import MentionsLegales from "./pages/MentionsLegales";
 import Cookies from "./pages/Cookies";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import CookieConsent from "./components/CookieConsent";
+import InstallPWA from "./components/InstallPWA";
+
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 function ScrollToTop() {
   const { pathname, hash } = useLocation();
@@ -47,27 +50,30 @@ export default function App() {
       <div className="min-h-screen bg-white pb-[80px] md:pb-0">
         <Navbar />
         <main>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/ptz" element={<PTZ />} />
-            <Route path="/simulateur-ptz" element={<PTZCalculator />} />
-            <Route path="/simulation" element={<Simulation />} />
-            <Route path="/results" element={<Results />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="/blog" element={<Blog />} />
-            <Route path="/guide/etapes" element={<GuideEtapes />} />
-            <Route path="/guide/garanties" element={<GuideGaranties />} />
-            <Route path="/guide/avantages" element={<GuideAvantages />} />
-            <Route path="/calcul-frais-de-notaire" element={<NotaryFeesCalculator />} />
-            <Route path="/etude-projet" element={<MeetingRequest />} />
-            <Route path="/mentions-legales" element={<MentionsLegales />} />
-            <Route path="/cookies" element={<Cookies />} />
-            <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/ptz" element={<PTZ />} />
+              <Route path="/simulateur-ptz" element={<PTZCalculator />} />
+              <Route path="/simulation" element={<Simulation />} />
+              <Route path="/results" element={<Results />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/blog" element={<Blog />} />
+              <Route path="/guide/etapes" element={<GuideEtapes />} />
+              <Route path="/guide/garanties" element={<GuideGaranties />} />
+              <Route path="/guide/avantages" element={<GuideAvantages />} />
+              <Route path="/calcul-frais-de-notaire" element={<NotaryFeesCalculator />} />
+              <Route path="/etude-projet" element={<MeetingRequest />} />
+              <Route path="/mentions-legales" element={<MentionsLegales />} />
+              <Route path="/cookies" element={<Cookies />} />
+              <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
         <Footer />
         <MobileNav />
         <CookieConsent />
+        <InstallPWA />
       </div>
     </BrowserRouter>
   );

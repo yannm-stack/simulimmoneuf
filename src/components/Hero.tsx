@@ -26,10 +26,10 @@ export default function Hero() {
           <span className="inline-block px-4 py-1.5 bg-primary-fixed text-on-primary-fixed rounded-full text-xs font-bold tracking-widest mb-6 uppercase">
             Expertise Immobilier Neuf
           </span>
-          <h1 className="text-5xl md:text-6xl font-extrabold text-on-surface leading-[1.1] tracking-tighter mb-6">
+          <h1 className="text-4xl md:text-6xl font-extrabold text-on-surface leading-[1.1] tracking-tighter mb-6">
             VOTRE CHEMIN LE PLUS SIMPLE VERS UN LOGEMENT <span className="text-[#00665E]">NEUF</span>
           </h1>
-          <p className="text-xl text-on-surface-variant mb-10 leading-relaxed max-w-lg">
+          <p className="text-lg md:text-xl text-on-surface-variant mb-10 leading-relaxed max-w-lg">
             Simulez votre crédit en quelques clics, gratuitement et de manière sécurisée.
           </p>
           <div className="flex flex-col sm:flex-row gap-4">

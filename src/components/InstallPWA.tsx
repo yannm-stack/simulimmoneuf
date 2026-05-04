@@ -26,8 +26,17 @@ export default function InstallPWA() {
 
     setIsIOS(isIOSDevice);
 
-    const isDismissed = localStorage.getItem('install_prompt_dismissed');
-    const dismissalTime = isDismissed ? parseInt(isDismissed) : 0;
+    let dismissalTime = 0;
+    try {
+      const storage = typeof window !== 'undefined' ? window.localStorage : null;
+      if (storage) {
+        const isDismissed = storage.getItem('install_prompt_dismissed');
+        dismissalTime = isDismissed ? parseInt(isDismissed) : 0;
+      }
+    } catch (e) {
+      console.warn('LocalStorage access failed:', e);
+    }
+    
     const now = Date.now();
     const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 
@@ -55,7 +64,14 @@ export default function InstallPWA() {
   }, []);
 
   const handleDismiss = () => {
-    localStorage.setItem('install_prompt_dismissed', Date.now().toString());
+    try {
+      const storage = typeof window !== 'undefined' ? window.localStorage : null;
+      if (storage) {
+        storage.setItem('install_prompt_dismissed', Date.now().toString());
+      }
+    } catch (e) {
+      console.warn('Could not save dismissal to localStorage:', e);
+    }
     setIsVisible(false);
   };
 

@@ -26,8 +26,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReset = () => {
-    sessionStorage.clear();
-    localStorage.clear();
+    try {
+      sessionStorage.clear();
+      localStorage.clear();
+    } catch (e) {
+      console.warn('Could not clear storage:', e);
+    }
     window.location.href = '/';
   };
 
@@ -44,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
               Il semble que des données corrompues empêchent l'affichage de cette page. Ne vous inquiétez pas, vos informations de simulation peuvent être réinitialisées.
             </p>
             <button
-              onClick={handleReset}
+              onClick={this.handleReset}
               className="w-full bg-primary text-white py-4 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:brightness-110 active:scale-95 transition-all shadow-xl shadow-primary/20"
             >
               <RotateCcw size={20} />

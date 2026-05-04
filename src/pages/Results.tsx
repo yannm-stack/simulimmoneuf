@@ -32,9 +32,12 @@ export default function Results() {
     fetch("/api/rates")
       .then(res => res.json())
       .then(data => {
-        setMarketRates(data);
-        if (!s.interestRate) {
-          setInterestRate(getRateForDuration(durationYears, data));
+        if (Array.isArray(data) && data.length > 0) {
+          setMarketRates(data);
+          if (!s.interestRate) {
+            const calculatedRate = getRateForDuration(durationYears, data);
+            if (calculatedRate) setInterestRate(calculatedRate);
+          }
         }
       })
       .catch(err => console.error("Error fetching market rates:", err));

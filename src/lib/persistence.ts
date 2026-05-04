@@ -1,28 +1,46 @@
 
 export const SIMULATION_STORAGE_KEY = 'simulimmoneuf_latest_simulation';
 
+function getStorage() {
+  try {
+    return typeof window !== 'undefined' ? window.sessionStorage : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 export function saveSimulation(data: any) {
   try {
-    sessionStorage.setItem(SIMULATION_STORAGE_KEY, JSON.stringify(data));
+    const storage = getStorage();
+    if (storage) {
+      storage.setItem(SIMULATION_STORAGE_KEY, JSON.stringify(data));
+    }
   } catch (e) {
-    console.error('Error saving simulation to sessionStorage:', e);
+    console.warn('Could not save simulation data:', e);
   }
 }
 
 export function loadSimulation() {
   try {
-    const saved = sessionStorage.getItem(SIMULATION_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : null;
+    const storage = getStorage();
+    if (storage) {
+      const saved = storage.getItem(SIMULATION_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
   } catch (e) {
-    console.error('Error loading simulation from sessionStorage:', e);
+    console.warn('Could not load simulation data:', e);
     return null;
   }
 }
 
 export function clearSimulation() {
   try {
-    sessionStorage.removeItem(SIMULATION_STORAGE_KEY);
+    const storage = getStorage();
+    if (storage) {
+      storage.removeItem(SIMULATION_STORAGE_KEY);
+    }
   } catch (e) {
-    console.error('Error clearing simulation from sessionStorage:', e);
+    console.warn('Could not clear simulation data:', e);
   }
 }

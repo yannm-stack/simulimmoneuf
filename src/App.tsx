@@ -68,12 +68,12 @@ export default function App() {
               <Route path="/cookies" element={<Cookies />} />
               <Route path="/politique-de-confidentialite" element={<PrivacyPolicy />} />
             </Routes>
+            <InstallPWA />
           </ErrorBoundary>
         </main>
         <Footer />
         <MobileNav />
         <CookieConsent />
-        <InstallPWA />
       </div>
     </BrowserRouter>
   );

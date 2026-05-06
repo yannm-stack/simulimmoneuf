@@ -502,7 +502,7 @@ export default function PTZCalculator() {
               <div className="p-4 bg-gray-50 flex flex-col items-center">
                 <div className="relative w-full aspect-[4/5] max-h-[60vh] rounded-xl overflow-hidden shadow-inner border border-gray-200 bg-white">
                   <img 
-                    src="https://img.comment-economiser.fr/donnees/2101/avis-imposition-rfr.jpg" 
+                    src="https://i.imgur.com/wJjLtBF.png" 
                     alt="Exemple avis d'imposition RFR" 
                     className="w-full h-full object-contain"
                   />

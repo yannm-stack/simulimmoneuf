@@ -684,7 +684,7 @@ export default function Simulation() {
                     <div className="space-y-2">
                       <label className="text-sm font-semibold text-on-surface-variant flex items-center justify-between">
                         <span>Type de contrat <MandatoryDot /></span>
-                        <Info size={14} className="text-gray-400 cursor-help" title="Le CDI est privilégié par les banques" />
+                        <span title="Le CDI est privilégié par les banques"><Info size={14} className="text-gray-400 cursor-help" /></span>
                       </label>
                       <div className="relative">
                         <select 
@@ -710,7 +710,7 @@ export default function Simulation() {
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-on-surface-variant flex items-center justify-between">
                           <span>Ancienneté dans l'entreprise <MandatoryDot /></span>
-                          <Info size={14} className="text-gray-400 cursor-help" title="Depuis votre date d'embauche" />
+                          <span title="Depuis votre date d'embauche"><Info size={14} className="text-gray-400 cursor-help" /></span>
                         </label>
                         <div className="relative">
                           <select 
@@ -794,7 +794,7 @@ export default function Simulation() {
                       <div className="space-y-2">
                         <label className="text-sm font-semibold text-on-surface-variant flex items-center justify-between">
                           <span>Type de contrat <MandatoryDot /></span>
-                          <Info size={14} className="text-gray-400 cursor-help" title="Le CDI est privilégié par les banques" />
+                          <span title="Le CDI est privilégié par les banques"><Info size={14} className="text-gray-400 cursor-help" /></span>
                         </label>
                         <div className="relative">
                           <select 
@@ -819,8 +819,8 @@ export default function Simulation() {
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <label className="text-sm font-semibold text-on-surface-variant flex items-center justify-between">
-                            <span>Ancienneté dans l'entreprise <MandatoryDot /></span>
-                            <Info size={14} className="text-gray-400 cursor-help" title="Depuis votre date d'embauche" />
+                             <span>Ancienneté dans l'entreprise <MandatoryDot /></span>
+                             <span title="Depuis votre date d'embauche"><Info size={14} className="text-gray-400 cursor-help" /></span>
                           </label>
                           <div className="relative">
                             <select 
@@ -1066,7 +1066,7 @@ export default function Simulation() {
                               <HelpCircle size={12} /> Aide
                             </button>
                           </div>
-                          <Info size={14} className="text-gray-400 cursor-help" title="Revenu Fiscal de Référence" />
+                          <span title="Revenu Fiscal de Référence"><Info size={14} className="text-gray-400 cursor-help" /></span>
                         </label>
                         <div className="relative">
                           <input 
@@ -1397,7 +1397,7 @@ export default function Simulation() {
                 </section>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <section className={`p-8 rounded-2xl shadow-lg transition-all border-2 ${isZoneVerified ? 'bg-white border-green-100 shadow-green-900/5' : 'bg-primary/5 border-primary shadow-primary/10'}`}>
+                  <section id="zone-section" className={`p-8 rounded-2xl shadow-lg transition-all border-2 ${isZoneVerified ? 'bg-white border-green-100 shadow-green-900/5' : 'bg-amber-50 border-amber-200 shadow-amber-900/5'}`}>
                     <div className="flex justify-between items-center mb-6">
                       <label className="block text-xs font-black uppercase tracking-widest text-primary">Zone de financement (Obligatoire)</label>
                       <div className="flex items-center gap-2">
@@ -1612,8 +1612,14 @@ export default function Simulation() {
                   </div>
                   <button 
                     type="submit" 
-                    disabled={!isZoneVerified}
-                    className={`w-full md:w-auto px-10 py-5 rounded-xl font-headline font-extrabold text-xl shadow-2xl transition-all flex items-center justify-center gap-3 group ${isZoneVerified ? 'bg-primary text-white shadow-primary/20 hover:brightness-110 transform active:scale-95 cursor-pointer' : 'bg-gray-200 text-gray-400 shadow-none cursor-not-allowed'}`}
+                    onClick={(e) => {
+                      if (!isZoneVerified) {
+                        e.preventDefault();
+                        alert("Veuillez vérifier et confirmer votre zone de financement avant de continuer. Cliquez sur 'VÉRIFIER MA ZONE' ou sélectionnez une zone manuellement.");
+                        document.getElementById('zone-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }
+                    }}
+                    className={`w-full md:w-auto px-10 py-5 rounded-xl font-headline font-extrabold text-xl shadow-2xl transition-all flex items-center justify-center gap-3 group ${isZoneVerified ? 'bg-primary text-white shadow-primary/20 hover:brightness-110 transform active:scale-95 cursor-pointer' : 'bg-gray-200 text-gray-400 shadow-none cursor-pointer hover:bg-gray-300'}`}
                   >
                     Voir ma capacité d'emprunt
                     <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
@@ -1663,7 +1669,7 @@ export default function Simulation() {
                 <div className="p-4 bg-gray-50 flex flex-col items-center">
                   <div className="relative w-full aspect-[4/5] max-h-[60vh] rounded-xl overflow-hidden shadow-inner border border-gray-200 bg-white">
                     <img 
-                      src="https://img.comment-economiser.fr/donnees/2101/avis-imposition-rfr.jpg" 
+                      src="https://i.imgur.com/wJjLtBF.png" 
                       alt="Exemple avis d'imposition RFR" 
                       className="w-full h-full object-contain"
                     />

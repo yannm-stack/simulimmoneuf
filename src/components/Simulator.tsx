@@ -1,4 +1,4 @@
-import { Users, Building2, ArrowRight, Lock } from "lucide-react";
+import { Users, Building2, ArrowRight, Lock, CheckCircle2, Check, History, HelpCircle } from "lucide-react";
 import { motion } from "motion/react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
@@ -30,28 +30,58 @@ export default function Simulator() {
           </div>
         </div>
 
-        {/* Card Grid */}
-        <div className="grid md:grid-cols-2 gap-4 md:gap-8 mb-12">
-          <button 
-            onClick={() => setSelection("primo")}
-            className={`group p-6 md:p-8 bg-white rounded-xl text-left transition-all border-2 shadow-sm hover:shadow-md ${selection === "primo" ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/50"}`}
-          >
-            <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center mb-4 md:mb-6 transition-transform group-hover:scale-110 ${selection === "primo" ? "bg-primary text-white" : "bg-primary-fixed text-primary"}`}>
-              <Users size={24} className="md:w-[32px] md:h-[32px]" />
-            </div>
-            <h4 className="text-lg md:text-xl font-bold mb-2 text-on-surface">Je suis Primo-accédant</h4>
-            <p className="text-sm text-on-surface-variant leading-relaxed">C'est ma première acquisition pour ma résidence principale.</p>
-          </button>
-          <button 
-            onClick={() => setSelection("invest")}
-            className={`group p-6 md:p-8 bg-white rounded-xl text-left transition-all border-2 shadow-sm hover:shadow-md ${selection === "invest" ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/50"}`}
-          >
-            <div className={`w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center mb-4 md:mb-6 transition-transform group-hover:scale-110 ${selection === "invest" ? "bg-primary text-white" : "bg-surface-container text-on-surface-variant"}`}>
-              <Building2 size={24} className="md:w-[32px] md:h-[32px]" />
-            </div>
-            <h4 className="text-lg md:text-xl font-bold mb-2 text-on-surface">Je suis Investisseur</h4>
-            <p className="text-sm text-on-surface-variant leading-relaxed">Je souhaite constituer un patrimoine ou défiscaliser.</p>
-          </button>
+        <div className="mb-12">
+          <div className="flex items-center gap-3 mb-8">
+            <CheckCircle2 size={24} className="text-primary shrink-0" />
+            <h3 className="text-xl md:text-2xl font-bold text-gray-900">Est-ce votre premier achat immobilier ?</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            <button 
+              onClick={() => setSelection("primo")}
+              className={`relative flex flex-col items-center justify-center p-8 md:p-12 rounded-3xl transition-all border-2 ${
+                selection === "primo" 
+                  ? "border-primary bg-primary/[0.03] shadow-sm" 
+                  : "border-gray-100 bg-white hover:border-gray-200"
+              }`}
+            >
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 border-2 transition-colors ${
+                selection === "primo" 
+                  ? "bg-primary/5 border-primary text-primary" 
+                  : "bg-gray-50 border-gray-100 text-gray-300"
+              }`}>
+                <Check size={28} />
+              </div>
+              <div className="text-center">
+                <span className={`block text-xl font-bold mb-1 ${selection === "primo" ? "text-gray-900" : "text-gray-900"}`}>Oui</span>
+                <div className="flex items-center justify-center gap-1.5">
+                  <span className="text-gray-500 font-medium whitespace-nowrap">Primo-accédant</span>
+                  <HelpCircle size={16} className="text-gray-300 cursor-help" />
+                </div>
+              </div>
+            </button>
+
+            <button 
+              onClick={() => setSelection("invest")}
+              className={`relative flex flex-col items-center justify-center p-8 md:p-12 rounded-3xl transition-all border-2 ${
+                selection === "invest" 
+                  ? "border-primary bg-primary/[0.03] shadow-sm" 
+                  : "border-gray-100 bg-white hover:border-gray-200"
+              }`}
+            >
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 border-2 transition-colors ${
+                selection === "invest" 
+                  ? "bg-primary/5 border-primary text-primary" 
+                  : "bg-gray-50 border-gray-100 text-gray-300"
+              }`}>
+                <History size={28} />
+              </div>
+              <div className="text-center">
+                <span className="block text-xl font-bold mb-1 text-gray-900">Non</span>
+                <span className="text-gray-500 font-medium">Déjà propriétaire</span>
+              </div>
+            </button>
+          </div>
         </div>
 
         <div className="flex flex-col items-center gap-6">

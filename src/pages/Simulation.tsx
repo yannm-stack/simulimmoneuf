@@ -8,7 +8,7 @@ import { detectZone } from "../lib/cityZones";
 import { DEPARTMENTS } from "../lib/departments";
 import Autocomplete from "../components/Autocomplete";
 
-import { saveSimulation } from "../lib/persistence";
+import { saveSimulation, loadSimulation } from "../lib/persistence";
 
 export default function Simulation() {
   const navigate = useNavigate();
@@ -81,6 +81,123 @@ export default function Simulation() {
   const [errors, setErrors] = useState<string[]>([]);
 
   const [showRfrHelp, setShowRfrHelp] = useState(false);
+
+  // Restore simulation data on mount
+  useEffect(() => {
+    const saved = loadSimulation();
+    if (saved) {
+      if (saved.primo) setPrimo(saved.primo);
+      if (saved.housingStatus) setHousingStatus(saved.housingStatus);
+      if (saved.nonOwnerDuration) setNonOwnerDuration(saved.nonOwnerDuration);
+      if (saved.wasPrimaryOwnerBefore) setWasPrimaryOwnerBefore(saved.wasPrimaryOwnerBefore);
+      if (saved.isCouple !== undefined) setSituation(saved.isCouple ? "couple" : "single");
+      if (saved.age1) setAge1(saved.age1.toString());
+      if (saved.age2) setAge2(saved.age2.toString());
+      if (saved.children !== undefined) setChildren(saved.children.toString());
+      if (saved.maritalStatus) setMaritalStatus(saved.maritalStatus);
+      
+      // Step 2
+      if (saved.rev1Net !== undefined) setRev1Net(saved.rev1Net);
+      if (saved.rev1Months !== undefined) setRev1Months(saved.rev1Months);
+      if (saved.rev1?.other !== undefined) setRev1Other(saved.rev1.other);
+      if (saved.rev1?.rental !== undefined) setRev1Rental(saved.rev1.rental);
+      if (saved.rev1?.pension !== undefined) setRev1Pension(saved.rev1.pension);
+      if (saved.contractType1) setContractType1(saved.contractType1);
+      
+      if (saved.rev2Net !== undefined) setRev2Net(saved.rev2Net);
+      if (saved.rev2Months !== undefined) setRev2Months(saved.rev2Months);
+      if (saved.rev2?.other !== undefined) setRev2Other(saved.rev2.other);
+      if (saved.rev2?.rental !== undefined) setRev2Rental(saved.rev2.rental);
+      if (saved.rev2?.pension !== undefined) setRev2Pension(saved.rev2.pension);
+      if (saved.contractType2) setContractType2(saved.contractType2);
+      
+      if (saved.apport1 !== undefined) setApport1(saved.apport1);
+      if (saved.apport2 !== undefined) setApport2(saved.apport2);
+      if (saved.rfr1 !== undefined) setRfr1(saved.rfr1);
+      if (saved.rfr2 !== undefined) setRfr2(saved.rfr2);
+      
+      if (saved.seniority1) setSeniority1(saved.seniority1);
+      if (saved.trialFinished1 !== undefined) setTrialFinished1(saved.trialFinished1);
+      if (saved.trialEnd1) setTrialEnd1(saved.trialEnd1);
+      if (saved.seniority2) setSeniority2(saved.seniority2);
+      if (saved.trialFinished2 !== undefined) setTrialFinished2(saved.trialFinished2);
+      if (saved.trialEnd2) setTrialEnd2(saved.trialEnd2);
+      
+      // Step 3
+      if (saved.chargesConso !== undefined) setChargesConso(saved.chargesConso);
+      if (saved.chargesImmo !== undefined) setChargesImmo(saved.chargesImmo);
+      if (saved.chargesPension !== undefined) setChargesPension(saved.chargesPension);
+      
+      // Step 4
+      if (saved.dept) setDept(saved.dept);
+      if (saved.city) setCity(saved.city);
+      if (saved.zone) {
+        setZone(saved.zone);
+        setManualZone(true);
+        setIsZoneVerified(true);
+      }
+      if (saved.propertyType) setPropertyType(saved.propertyType);
+      if (saved.floor) setFloor(saved.floor);
+      if (saved.hasExterior !== undefined) setHasExterior(saved.hasExterior);
+      if (saved.hasParking !== undefined) setHasParking(saved.hasParking);
+      if (saved.rooms) setRooms(saved.rooms);
+      if (saved.deliveryYear) setDeliveryYear(saved.deliveryYear);
+      if (saved.deliveryQuarter) setDeliveryQuarter(saved.deliveryQuarter);
+
+      // Start at the last step if they are returning from results (not always wanted, but let's default to step 1 or where they were)
+      // Actually, if they are returning, they probably want to see the summary or the last step.
+      // But usually, returning to step 1 is safer unless we track current step too.
+    }
+  }, []);
+
+  // Autosave current state whenever a step is completed or any field changes (optional but good)
+  // For now let's just save when nextStep is called to avoid too many writes
+  const persistState = () => {
+    const data = {
+      isCouple: situation === "couple",
+      children: parseInt(children) || 0,
+      age1: parseInt(age1) || 0,
+      age2: parseInt(age2) || 0,
+      maritalStatus,
+      rev1Net,
+      rev1Months,
+      rev1: { net: Math.round(((rev1Net || 0) * rev1Months) / 12), other: rev1Other, rental: rev1Rental, pension: rev1Pension },
+      rev2Net,
+      rev2Months,
+      rev2: { net: Math.round(((rev2Net || 0) * rev2Months) / 12), other: rev2Other, rental: rev2Rental, pension: rev2Pension },
+      contractType1,
+      contractType2,
+      seniority1,
+      trialFinished1,
+      trialEnd1,
+      seniority2,
+      trialFinished2,
+      trialEnd2,
+      apport1,
+      apport2,
+      rfr1,
+      rfr2,
+      chargesConso,
+      chargesImmo,
+      chargesPension,
+      housingStatus,
+      primo,
+      nonOwnerDuration,
+      wasPrimaryOwnerBefore,
+      zone,
+      propertyType,
+      rooms,
+      hasParking,
+      hasExterior,
+      floor,
+      deliveryYear,
+      deliveryQuarter,
+      dept,
+      city,
+      mode: 'neuf'
+    };
+    saveSimulation(data);
+  };
   
   const MandatoryDot = () => <span className="text-red-500 ml-1 font-bold">*</span>;
 
@@ -188,10 +305,12 @@ export default function Simulation() {
     }
 
     setErrors([]);
+    persistState();
     setStep(step + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const prevStep = () => {
+    persistState();
     setStep(step - 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

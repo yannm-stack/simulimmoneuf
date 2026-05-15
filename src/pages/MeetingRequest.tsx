@@ -37,6 +37,7 @@ export default function MeetingRequest() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const fmt = (n: number) => new Intl.NumberFormat('fr-FR', { 
     style: 'currency', 
@@ -49,8 +50,8 @@ export default function MeetingRequest() {
     if (!formData.consent) return;
     
     setIsSubmitting(true);
+    setErrorMessage("");
     
-    // Simulate API call
     try {
       const response = await fetch("/api/request-meeting", {
         method: "POST",
@@ -64,9 +65,13 @@ export default function MeetingRequest() {
 
       if (response.ok) {
         setIsSubmitted(true);
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        setErrorMessage(errData.message || "Une erreur est survenue lors de l'envoi de votre demande. Veuillez réessayer.");
       }
     } catch (error) {
       console.error("Error submitting meeting request:", error);
+      setErrorMessage("Impossible de joindre le serveur. Veuillez vérifier votre connexion.");
     } finally {
       setIsSubmitting(false);
     }
@@ -204,6 +209,12 @@ export default function MeetingRequest() {
                       </span>
                     </label>
                   </div>
+
+                  {errorMessage && (
+                    <div className="p-4 bg-red-50 border border-red-100 rounded-2xl text-red-600 text-[10px] font-bold uppercase tracking-tight text-center">
+                      {errorMessage}
+                    </div>
+                  )}
 
                   <button 
                     disabled={isSubmitting || !formData.consent}

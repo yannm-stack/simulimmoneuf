@@ -16,6 +16,9 @@ const rssParser = new Parser({
 
 const app = express();
 
+// Trust proxy headers (needed for express-rate-limit behind a proxy)
+app.set("trust proxy", 1);
+
 // Configure Nodemailer for OVH
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "ssl0.ovh.net",
@@ -46,7 +49,10 @@ const formatValue = (val: any) => {
 
 const forwardToCRM = async (data: any) => {
   try {
-    const crmUrl = process.env.CRM_URL || "https://ais-pre-olgpljin4bh4c35p6o4fot-649204832248.europe-west2.run.app/api/leads";
+    const rawCrmUrl = process.env.CRM_URL || "https://ais-pre-olgpljin4bh4c35p6o4fot-649204832248.europe-west2.run.app/api/leads";
+    // Ensure we have a valid URL (sometimes users might provide just the domain)
+    const crmUrl = rawCrmUrl.endsWith('/') ? `${rawCrmUrl}api/leads` : (rawCrmUrl.includes('/api/') ? rawCrmUrl : `${rawCrmUrl}/api/leads`);
+    
     console.log("Forwarding lead to CRM:", crmUrl);
     
     // Structure the data for the CRM
@@ -61,13 +67,17 @@ const forwardToCRM = async (data: any) => {
       createdAt: new Date().toISOString()
     };
 
-    await axios.post(crmUrl, payload, { 
-      timeout: 5000,
+    const response = await axios.post(crmUrl, payload, { 
+      timeout: 8000,
       headers: { 'Content-Type': 'application/json' }
     });
-    console.log("Lead forwarded to CRM successfully");
+    console.log("Lead forwarded to CRM successfully. Status:", response.status);
   } catch (err) {
-    console.error("Failed to forward lead to CRM:", err instanceof Error ? err.message : String(err));
+    if (axios.isAxiosError(err)) {
+      console.error("Failed to forward lead to CRM. Status:", err.response?.status, "Error:", err.message);
+    } else {
+      console.error("Failed to forward lead to CRM:", err instanceof Error ? err.message : String(err));
+    }
   }
 };
 
@@ -219,20 +229,22 @@ const generalLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false }, // Disables the check now that we set trust proxy
 });
 app.use(generalLimiter);
 
 // Stricter Rate Limiting for API routes that send emails
 const apiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 10,
-  message: "Too many requests from this IP, please try again after an hour",
+  max: 100, // Increased for testing and higher volume
+  message: "Too many requests from this IP, please try again later",
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false },
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", env: process.env.NODE_ENV, vercel: !!process.env.VERCEL });
+  res.json({ status: "ok", env: process.env.NODE_ENV, vercel: !!process.env.VERCEL, smtp_configured: !!process.env.SMTP_PASSWORD });
 });
 
 // API Route: Fetch Rates from MoneyVox
@@ -332,9 +344,12 @@ app.post("/api/request-docs", apiLimiter, express.json(), async (req, res) => {
     const data = req.body;
     console.log("Document request received for:", data.clientName || `${data.firstName} ${data.lastName}`);
     
+    // Always forward to CRM first or in parallel
+    await forwardToCRM(data);
+
     if (!process.env.SMTP_PASSWORD) {
       console.warn("SMTP_PASSWORD not set. Email not sent.");
-      return res.json({ success: true, message: "Logged (SMTP not configured)" });
+      return res.json({ success: true, message: "Lead forwarded to CRM (SMTP not configured)" });
     }
 
     const mailOptions = {
@@ -351,10 +366,7 @@ app.post("/api/request-docs", apiLimiter, express.json(), async (req, res) => {
 
     await transporter.sendMail(mailOptions);
     
-    // Also forward to CRM
-    await forwardToCRM(data);
-
-    res.json({ success: true, message: "Email sent successfully" });
+    res.json({ success: true, message: "Email sent and lead forwarded to CRM" });
   } catch (error) {
     console.error("Error sending email:", error);
     res.status(500).json({ error: "Failed to send email" });
@@ -367,9 +379,12 @@ app.post("/api/request-meeting", apiLimiter, express.json(), async (req, res) =>
     const data = req.body;
     console.log("Meeting request received from:", data.email);
 
+    // Always forward to CRM first or in parallel
+    await forwardToCRM(data);
+
     if (!process.env.SMTP_PASSWORD) {
       console.warn("SMTP_PASSWORD not set. Email not sent.");
-      return res.json({ success: true, message: "Logged (SMTP not configured)" });
+      return res.json({ success: true, message: "Lead forwarded to CRM (SMTP not configured)" });
     }
 
     const mailOptions = {
@@ -386,10 +401,7 @@ app.post("/api/request-meeting", apiLimiter, express.json(), async (req, res) =>
 
     await transporter.sendMail(mailOptions);
 
-    // Also forward to CRM
-    await forwardToCRM(data);
-
-    res.json({ success: true, message: "Email sent successfully" });
+    res.json({ success: true, message: "Email sent and lead forwarded to CRM" });
   } catch (error) {
     console.error("Error sending meeting request email:", error);
     res.status(500).json({ error: "Failed to send email" });

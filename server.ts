@@ -47,37 +47,80 @@ const formatValue = (val: any) => {
   return escapeHtml(val);
 };
 
+// In-memory log for debugging (not persistent)
+const leadHistory: any[] = [];
+const addLeadToHistory = (type: string, data: any, status: string, error?: string) => {
+  leadHistory.unshift({
+    timestamp: new Date().toISOString(),
+    type,
+    email: data.email || data.clientName || 'Sans nom',
+    status,
+    error,
+    destination: process.env.CRM_URL || "Default CRM"
+  });
+  if (leadHistory.length > 10) leadHistory.pop();
+};
+
 const forwardToCRM = async (data: any) => {
   try {
     const rawCrmUrl = process.env.CRM_URL || "https://ais-pre-olgpljin4bh4c35p6o4fot-649204832248.europe-west2.run.app/api/leads";
-    // Ensure we have a valid URL (sometimes users might provide just the domain)
+    
+    // Check if it's the development URL (which often requires authentication)
+    if (rawCrmUrl.includes('-dev-')) {
+      console.warn("CRM_URL contains '-dev-'. External webhooks MUST use '-pre-' (Shared App URL) to avoid authentication errors.");
+    }
+
+    // Detect recursive loops: if the CRM_URL is the same as the current app's public URL
+    const appUrl = (process.env.APP_URL || '').replace('https://', '').replace('http://', '').split('/')[0];
+    const targetUrl = rawCrmUrl.replace('https://', '').replace('http://', '').split('/')[0];
+
+    if (appUrl && targetUrl && appUrl === targetUrl) {
+      console.warn("RECURSION DETECTED: CRM_URL is pointing to this application itself. Forwarding cancelled.");
+      addLeadToHistory("Forward", data, "Cancelled (Recursion)");
+      return;
+    }
+    
+    // Ensure we have a valid URL
     const crmUrl = rawCrmUrl.endsWith('/') ? `${rawCrmUrl}api/leads` : (rawCrmUrl.includes('/api/') ? rawCrmUrl : `${rawCrmUrl}/api/leads`);
     
     console.log("Forwarding lead to CRM:", crmUrl);
     
     // Structure the data for the CRM
     const payload = {
-      firstName: data.firstName || data.clientName?.split(' ')[0] || '',
-      lastName: data.lastName || data.clientName?.split(' ').slice(1).join(' ') || '',
-      email: data.email,
-      phone: data.phone,
+      firstName: data.firstName || data.clientName?.split(' ')[0] || "Prospect",
+      lastName: data.lastName || data.clientName?.split(' ').slice(1).join(' ') || "Web",
+      email: data.email || "non-precise@test.fr",
+      phone: data.phone || "",
       source: "SimulImmoNeuf",
       type: data.simulationData ? "Study Request" : "Simulation Result",
       simulation: data.simulationData || data,
+      metadata: {
+        agent: "AI-Studio-Bridge",
+        host: process.env.APP_URL || 'unknown',
+        originalClient: data.clientName || 'unknown'
+      },
       createdAt: new Date().toISOString()
     };
 
     const response = await axios.post(crmUrl, payload, { 
-      timeout: 8000,
+      timeout: 12000, 
       headers: { 'Content-Type': 'application/json' }
     });
     console.log("Lead forwarded to CRM successfully. Status:", response.status);
+    addLeadToHistory("Forward", data, `Success (${response.status})`);
   } catch (err) {
+    let errorMsg = "Unknown Error";
+    let status = "Error";
     if (axios.isAxiosError(err)) {
-      console.error("Failed to forward lead to CRM. Status:", err.response?.status, "Error:", err.message);
+      status = `Axios Error (${err.response?.status || err.code})`;
+      errorMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      console.error("Failed to forward lead to CRM. Status:", err.response?.status, "Data:", err.response?.data);
+      if (err.code === 'ECONNABORTED') console.error("CRM Request timed out (12s)");
     } else {
-      console.error("Failed to forward lead to CRM:", err instanceof Error ? err.message : String(err));
+      errorMsg = err instanceof Error ? err.message : String(err);
+      console.error("Failed to forward lead to CRM error:", errorMsg);
     }
+    addLeadToHistory("Forward", data, status, errorMsg);
   }
 };
 
@@ -244,7 +287,74 @@ const apiLimiter = rateLimit({
 });
 
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", env: process.env.NODE_ENV, vercel: !!process.env.VERCEL, smtp_configured: !!process.env.SMTP_PASSWORD });
+  res.json({ 
+    status: "ok", 
+    env: process.env.NODE_ENV, 
+    smtp_configured: !!process.env.SMTP_PASSWORD,
+    crm_configured: !!process.env.CRM_URL,
+    crm_url: process.env.CRM_URL || "Default (ais-pre-olgpljin...)",
+    app_url: process.env.APP_URL || "Not set",
+    recent_activity: leadHistory
+  });
+});
+
+// API Route: Test CRM Connection
+app.get("/api/test-crm", async (req, res) => {
+  const testData = {
+    firstName: "Test",
+    lastName: "Diagnostic",
+    email: "test-diagnostic@simulimmoneuf.fr",
+    phone: "0102030405",
+    simulationData: { diagnostic: true, date: new Date().toISOString() }
+  };
+  
+  console.log("Starting CRM forwarding diagnostic...");
+  const rawCrmUrl = process.env.CRM_URL || "https://ais-pre-olgpljin4bh4c35p6o4fot-649204832248.europe-west2.run.app/api/leads";
+  
+  try {
+    await forwardToCRM(testData);
+    res.json({ 
+      message: "Diagnostic lancé. Vérifiez les logs.", 
+      crm_url_configured: rawCrmUrl,
+      is_dev_url: rawCrmUrl.includes('-dev-') 
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Diagnostic failure", details: String(err) });
+  }
+});
+
+// API Route: Lead Webhook (for external calls from simulimmoneuf.fr)
+app.post("/api/leads", apiLimiter, express.json(), async (req, res) => {
+  try {
+    const data = req.body;
+    const identifier = data.email || data.clientName || 'Sans nom';
+    console.log("Lead received from external source:", identifier);
+    addLeadToHistory("Incoming", data, "Received");
+
+    // 1. Send to CRM
+    await forwardToCRM(data);
+
+    // 2. Send Email if SMTP is configured
+    if (process.env.SMTP_PASSWORD) {
+      const mailOptions = {
+        from: `"SimulImmoNeuf" <${process.env.SMTP_USER}>`,
+        to: process.env.CONTACT_EMAIL || "contact@simulimmoneuf.fr",
+        subject: `NOUVEAU PROSPECT (Site Web) : ${data.firstName || data.clientName || 'Sans nom'}`,
+        text: `Nouveau prospect reçu via webhook.`,
+        html: generateTableHtml(
+          "Prospect Site Web", 
+          data, 
+          "Ce lead a été transmis automatiquement depuis votre site externe."
+        ),
+      };
+      await transporter.sendMail(mailOptions);
+    }
+
+    res.json({ success: true, message: "Lead processed and forwarded" });
+  } catch (error) {
+    console.error("Error processing external lead:", error);
+    res.status(500).json({ error: "Failed to process lead" });
+  }
 });
 
 // API Route: Fetch Rates from MoneyVox

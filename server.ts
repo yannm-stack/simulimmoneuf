@@ -44,6 +44,33 @@ const formatValue = (val: any) => {
   return escapeHtml(val);
 };
 
+const forwardToCRM = async (data: any) => {
+  try {
+    const crmUrl = process.env.CRM_URL || "https://ais-pre-olgpljin4bh4c35p6o4fot-649204832248.europe-west2.run.app/api/leads";
+    console.log("Forwarding lead to CRM:", crmUrl);
+    
+    // Structure the data for the CRM
+    const payload = {
+      firstName: data.firstName || data.clientName?.split(' ')[0] || '',
+      lastName: data.lastName || data.clientName?.split(' ').slice(1).join(' ') || '',
+      email: data.email,
+      phone: data.phone,
+      source: "SimulImmoNeuf",
+      type: data.simulationData ? "Study Request" : "Simulation Result",
+      simulation: data.simulationData || data,
+      createdAt: new Date().toISOString()
+    };
+
+    await axios.post(crmUrl, payload, { 
+      timeout: 5000,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    console.log("Lead forwarded to CRM successfully");
+  } catch (err) {
+    console.error("Failed to forward lead to CRM:", err instanceof Error ? err.message : String(err));
+  }
+};
+
 const generateTableHtml = (title: string, data: any, intro: string) => {
   const s = data.simulationData || data;
   
@@ -323,6 +350,10 @@ app.post("/api/request-docs", apiLimiter, express.json(), async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
+    
+    // Also forward to CRM
+    await forwardToCRM(data);
+
     res.json({ success: true, message: "Email sent successfully" });
   } catch (error) {
     console.error("Error sending email:", error);
@@ -354,6 +385,10 @@ app.post("/api/request-meeting", apiLimiter, express.json(), async (req, res) =>
     };
 
     await transporter.sendMail(mailOptions);
+
+    // Also forward to CRM
+    await forwardToCRM(data);
+
     res.json({ success: true, message: "Email sent successfully" });
   } catch (error) {
     console.error("Error sending meeting request email:", error);

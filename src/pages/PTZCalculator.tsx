@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
 import { Info, Search, Minus, Plus, ChevronDown, CheckCircle2, Home, Building2, ExternalLink, MapPin, AlertTriangle, HelpCircle } from "lucide-react";
 import { calculatePTZ as calculatePTZUtil, Zone } from "../lib/ptzUtils";
@@ -7,6 +8,7 @@ import { DEPARTMENTS } from "../lib/departments";
 import Autocomplete from "../components/Autocomplete";
 
 export default function PTZCalculator() {
+  const navigate = useNavigate();
   const [occupants, setOccupants] = useState(2);
   const [rfr, setRfr] = useState(35000);
   const [totalCost, setTotalCost] = useState(240000);
@@ -194,7 +196,10 @@ export default function PTZCalculator() {
                       >
                         Modifier
                       </button>
-                      <button className="flex-[2] bg-primary text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all uppercase tracking-widest">
+                      <button 
+                        onClick={() => navigate("/simulation")}
+                        className="flex-[2] bg-primary text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-primary/20 hover:brightness-110 active:scale-95 transition-all uppercase tracking-widest"
+                      >
                         Faites votre simulation
                       </button>
                     </div>

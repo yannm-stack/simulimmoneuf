@@ -85,8 +85,10 @@ const forwardToCRM = async (data: any) => {
     
     console.log("Forwarding lead to CRM:", crmUrl);
     
-    // Structure the data for the CRM
+    // Structure the data for the CRM - try to be as compatible as possible
+    const fullName = data.clientName || `${data.firstName || ''} ${data.lastName || ''}`.trim() || "Prospect Web";
     const payload = {
+      clientName: fullName, // Primary field for many AI Studio CRM templates
       firstName: data.firstName || data.clientName?.split(' ')[0] || "Prospect",
       lastName: data.lastName || data.clientName?.split(' ').slice(1).join(' ') || "Web",
       email: data.email || "non-precise@test.fr",
@@ -94,17 +96,32 @@ const forwardToCRM = async (data: any) => {
       source: "SimulImmoNeuf",
       type: data.simulationData ? "Study Request" : "Simulation Result",
       simulation: data.simulationData || data,
+      // Some CRMs expect these directly
+      message: data.message || (data.simulationData ? "Nouvelle simulation immobilière effectuée" : "Demande de contact"),
+      status: "new",
       metadata: {
         agent: "AI-Studio-Bridge",
         host: process.env.APP_URL || 'unknown',
-        originalClient: data.clientName || 'unknown'
+        originalClient: data.clientName || 'unknown',
+        bridgeVersion: "1.2.0"
       },
       createdAt: new Date().toISOString()
     };
 
+    console.log("Payload structured for CRM:", JSON.stringify(payload).substring(0, 200) + "...");
+
+    const headers: any = { 'Content-Type': 'application/json' };
+    
+    // Add Authorization header if a key is provided in secrets
+    if (process.env.CRM_API_KEY) {
+      headers['Authorization'] = `Bearer ${process.env.CRM_API_KEY}`;
+    } else if (process.env.API_KEY) {
+      headers['x-api-key'] = process.env.API_KEY;
+    }
+
     const response = await axios.post(crmUrl, payload, { 
       timeout: 12000, 
-      headers: { 'Content-Type': 'application/json' }
+      headers
     });
     console.log("Lead forwarded to CRM successfully. Status:", response.status);
     addLeadToHistory("Forward", data, `Success (${response.status})`);

@@ -374,7 +374,7 @@ export default function PTZCalculator() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest block px-1">Personnes à charge</label>
+                          <label className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest block px-1">Nombre de personne dans le logement</label>
                           <div className="flex items-center bg-gray-50 border border-gray-200 rounded-2xl p-1">
                             <button 
                               onClick={() => occupants > 1 && setOccupants(occupants - 1)}

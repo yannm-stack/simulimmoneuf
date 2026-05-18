@@ -53,7 +53,7 @@ export default function MeetingRequest() {
     setErrorMessage("");
     
     try {
-      const response = await fetch("/api/request-meeting", {
+      const response = await fetch("/api/leads", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
